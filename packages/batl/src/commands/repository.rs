@@ -307,8 +307,11 @@ fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
 
 	info(&format!("Running script{}\n", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
 
+	let batl_pwd = current_dir()?;
+
 	let status = std::process::Command::new("sh")
 		.current_dir(repository.path())
+		.env("BATL_PWD", batl_pwd.as_os_str())
 		.arg("-c")
 		.arg(command)
 		.status()?;

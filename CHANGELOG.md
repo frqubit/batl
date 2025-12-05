@@ -2,6 +2,11 @@
 
 ## [0.2.2] - Unreleased
 
+### Added
+
+- Exec environment
+  - `BATL_PWD` - The path where battalion was executed
+
 ### Changed
 
 - Configuration format
