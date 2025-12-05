@@ -1,7 +1,7 @@
 #![allow(clippy::exhaustive_structs)]
 #![allow(clippy::exhaustive_enums)]
 
-use batl_macros::environment_struct_impl;
+use batl_macros::{environment_struct_impl, versioned_identical};
 use crate::error::ReadConfigError;
 use crate::resource::Name;
 use serde::{Serialize, Deserialize};
@@ -9,18 +9,30 @@ use std::collections::HashMap;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
+versioned_identical!("0.3.0" => "latest" : [
+	Environment,
+	Repository,
+	Workspace,
+	Scripts,
+	Dependencies,
+	Restrict,
+	Restrictor
+]);
 
-pub type EnvironmentLatest = Environment0_2_2;
-pub type RepositoryLatest = Repository0_2_2;
-pub type WorkspaceLatest = Workspace0_2_2;
-pub type ScriptsLatest = Scripts0_2_2;
-pub type DependenciesLatest = Dependencies0_2_2;
-pub type RestrictLatest = Restrict0_2_2;
-pub type RestrictorLatest = Restrictor0_2_2;
+versioned_identical!("0.2.2" => "0.3.0" : [
+	Repository,
+	Workspace,
+	Scripts,
+	Dependencies,
+	Restrict,
+	Restrictor,
+	Links
+]);
 
 environment_struct_impl!("0.2.0");
 environment_struct_impl!("0.2.1");
 environment_struct_impl!("0.2.2");
+environment_struct_impl!("0.3.0");
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Repository0_2_2 {

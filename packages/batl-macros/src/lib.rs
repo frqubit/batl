@@ -2,10 +2,19 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream as ProcMacroStream;
 use proc_macro_error::proc_macro_error;
-use quote::quote;
+use quote::{ToTokens, quote};
 use semver::Version;
 use syn::{Ident, LitStr};
 
+mod formats;
+use formats::VersionedIdentical;
+
+#[proc_macro_error]
+#[proc_macro]
+pub fn versioned_identical(input: ProcMacroStream) -> ProcMacroStream {
+	let data = syn::parse_macro_input!(input as VersionedIdentical);
+	data.into_token_stream().into()
+}
 
 #[proc_macro_error]
 #[proc_macro]

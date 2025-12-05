@@ -1,9 +1,10 @@
+use batl_macros::versioned_identical;
 use serde::{Serialize, Deserialize};
 
-
-pub type BatlRcLatest = BatlRc0_2_2;
-pub type BatlRc0_2_2 = BatlRc0_2_1;
-
+// TODO make all of these parseable
+versioned_identical!("0.3.0" => "latest" : [BatlRc]);
+versioned_identical!("0.2.2" => "0.3.0" : [BatlRc]);
+versioned_identical!("0.2.1" => "0.2.2" : [BatlRc]);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 #[expect(clippy::exhaustive_structs)]

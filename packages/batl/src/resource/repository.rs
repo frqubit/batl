@@ -293,6 +293,7 @@ pub struct GitConfig {
 
 #[non_exhaustive]
 pub enum AnyTomlConfig {
+	V0_3_0(TomlConfig0_3_0),
 	V0_2_2(TomlConfig0_2_2),
 	V0_2_1(TomlConfig0_2_1),
 	V0_2_0(TomlConfig0_2_0)
@@ -303,6 +304,10 @@ impl TomlConfig for AnyTomlConfig {
 	#[inline]
 	fn read_toml(path: &Path) -> Result<Self, batlerror::ReadConfigError> {
 		let config_str = std::fs::read_to_string(path)?;
+
+		if let Ok(v030) = toml::from_str(&config_str) {
+			return Ok(Self::V0_3_0(v030));
+		}
 
 		if let Ok(v022) = toml::from_str(&config_str) {
 			return Ok(Self::V0_2_2(v022));
@@ -322,13 +327,23 @@ impl From<AnyTomlConfig> for TomlConfigLatest {
 		match value {
 			AnyTomlConfig::V0_2_0(v020) => v020.into(),
 			AnyTomlConfig::V0_2_1(v021) => v021.into(),
-			AnyTomlConfig::V0_2_2(v022) => v022
+			AnyTomlConfig::V0_2_2(v022) => v022.into(),
+			AnyTomlConfig::V0_3_0(v030) => v030
 		}
 	}
 }
 
 // CONFIG VERSIONS //
-pub type TomlConfigLatest = TomlConfig0_2_2;
+pub type TomlConfigLatest = TomlConfig0_3_0;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct TomlConfig0_3_0 {
+	pub environment: tomlconfig::Environment0_3_0,
+	pub repository: tomlconfig::Repository0_3_0,
+	pub scripts: Option<tomlconfig::Scripts0_3_0>,
+	pub dependencies: Option<tomlconfig::Dependencies0_3_0>,
+	pub restrict: Option<tomlconfig::Restrict0_3_0>
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 #[non_exhaustive]
@@ -338,6 +353,19 @@ pub struct TomlConfig0_2_2 {
 	pub scripts: Option<tomlconfig::Scripts0_2_2>,
 	pub dependencies: Option<tomlconfig::Dependencies0_2_2>,
 	pub restrict: Option<tomlconfig::Restrict0_2_2>
+}
+
+impl From<TomlConfig0_2_2> for TomlConfigLatest {
+	#[inline]
+	fn from(value: TomlConfig0_2_2) -> Self {
+		Self {
+			environment: tomlconfig::EnvironmentLatest::default(),
+			repository: value.repository,
+			scripts: value.scripts,
+			dependencies: value.dependencies,
+			restrict: value.restrict
+		}
+	}
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -392,9 +420,9 @@ impl From<TomlConfig0_2_0> for TomlConfigLatest {
 	}
 }
 
-impl From<TomlConfig0_2_2> for Config {
+impl From<TomlConfigLatest> for Config {
 	#[inline]
-	fn from(value: TomlConfig0_2_2) -> Self {
+	fn from(value: TomlConfigLatest) -> Self {
 		let git = value.repository.git.map(|toml| GitConfig {
 			url: toml.url,
 			path: toml.path
