@@ -6,7 +6,7 @@ use crate::error::ReadConfigError;
 use crate::resource::Name;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 
@@ -210,7 +210,7 @@ pub trait TomlConfig: Sized {
 	}
 }
 
-#[allow(clippy::missing_trait_methods)]
+#[expect(clippy::missing_trait_methods)]
 impl<T> TomlConfig for T
 where
 	T: serde::de::DeserializeOwned

@@ -54,7 +54,7 @@ pub fn cmd_add(name: String) -> Result<(), UtilityError> {
 
 	write_toml(&config_path, &config)?;
 
-	success(&format!("Added dependency {}", name));
+	success(&format!("Added dependency {name}"));
 
 	Ok(())
 }
@@ -78,7 +78,7 @@ pub fn cmd_remove(name: String) -> Result<(), UtilityError> {
 
 	write_toml(&config_path, &config)?;
 
-	success(&format!("Removed dependency {}", name));
+	success(&format!("Removed dependency {name}"));
 
 	Ok(())
 }
@@ -91,9 +91,9 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 		let gen_ = batl_root.join("gen");
 
 		std::fs::create_dir(&gen_)?;
-		std::fs::create_dir(&gen_.join("archives"))?;
-		std::fs::create_dir(&gen_.join("archives/repositories"))?;
-		std::fs::create_dir(&gen_.join("archives/workspaces"))?;
+		std::fs::create_dir(gen_.join("archives"))?;
+		std::fs::create_dir(gen_.join("archives/repositories"))?;
+		std::fs::create_dir(gen_.join("archives/workspaces"))?;
 
 		success("Added gen folder");
 	}

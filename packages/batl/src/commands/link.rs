@@ -86,7 +86,7 @@ fn cmd_stats(name: String, get: Option<StatsGet>) -> Result<(), UtilityError> {
 
 	match get {
 		None => {
-			println!("Link: {}", name);
+			println!("Link: {name}");
 			println!("Repository: {}", path.display());
 		},
 		Some(StatsGet::Name) => println!("{name}"),
@@ -109,14 +109,14 @@ fn cmd_init(name: Option<String>, repo: String) -> Result<(), UtilityError> {
 	}
 
 	let repo = Repository::load(repo.as_str().into())?
-		.ok_or(UtilityError::ResourceDoesNotExist(format!("Repository {}", repo)))?;
+		.ok_or(UtilityError::ResourceDoesNotExist(format!("Repository {repo}")))?;
 
 	let mut workspace = Workspace::locate_then_load(&current_dir()?)?
 		.ok_or(UtilityError::ResourceDoesNotExist("Workspace".to_string()))?;
 
 	workspace.create_link(&name, &repo)?;
 
-	success(&format!("Initialized link {}", name));
+	success(&format!("Initialized link {name}"));
 
 	Ok(())
 }
@@ -127,7 +127,7 @@ fn cmd_delete(name: String) -> Result<(), UtilityError> {
 
 	workspace.unlink(&name)?;
 
-	success(&format!("Deleted link {}", name));
+	success(&format!("Deleted link {name}"));
 
 	Ok(())
 }
@@ -139,7 +139,7 @@ fn cmd_run(name: String, args: Vec<String>) -> Result<(), UtilityError> {
 	let repository = workspace.link(&name)
 		.ok_or(UtilityError::LinkNotFound)?;
 
-	info(&format!("Running command for link {}\n", name));
+	info(&format!("Running command for link {name}\n"));
 
 	let status = std::process::Command::new(args.first().unwrap())
 		.current_dir(repository.path())
@@ -170,7 +170,7 @@ fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
 	let command = repository.script(&script)
 		.ok_or(UtilityError::ScriptNotFound(script))?;
 
-	info(&format!("Running script{}\n", name.map(|s| format!(" for link {}", s)).unwrap_or("".to_string())));
+	info(&format!("Running script{}\n", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
 
 	let status = std::process::Command::new("sh")
 		.current_dir(repository.path())
@@ -183,7 +183,7 @@ fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
 		return Err(UtilityError::ScriptError(format!("Exit code {}", status.code().unwrap_or(0))))
 	}
 
-	println!("");
+	println!();
 	success("Script completed successfully");
 
 	Ok(())

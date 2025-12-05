@@ -112,7 +112,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 
 		if let Some(filename) = filename.strip_prefix('@') {
 			let new_name = filename.to_string();
-			let new_name = format!("{}{}/", name, new_name);
+			let new_name = format!("{name}{new_name}/");
 
 			to_search.extend(
 				std::fs::read_dir(path)?
@@ -121,7 +121,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 					})
 			);
 		} else {
-			found.push(format!("{}{}", name, filename));
+			found.push(format!("{name}{filename}"));
 		}
 	}
 
@@ -132,7 +132,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 			}
 		}
 
-		println!("{}", name);
+		println!("{name}");
 	}
 
 	Ok(())
@@ -204,7 +204,7 @@ fn cmd_scaffold() -> Result<(), UtilityError> {
 		println!();
 
 		if let Err(err) = result {
-			println!("{}", err);
+			println!("{err}");
 
 			return Err(UtilityError::ResourceNotCollected("Git remote".to_string()));
 		}
@@ -241,7 +241,7 @@ fn cmd_env(name: Option<String>, var: String) -> Result<(), UtilityError> {
 		.map_err(|_| UtilityError::ResourceDoesNotExist("Environment variables".to_string()))?;
 
 	if let Some(val) = env_file.get(&var) {
-		println!("{}", val);
+		println!("{val}");
 	}
 
 	Ok(())
@@ -273,7 +273,7 @@ fn cmd_publish(name: String) -> Result<(), UtilityError> {
 		.send(archive.to_file())?;
 
 	if resp.status() == 200 {
-		success(&format!("Published repository {}", name))
+		success(&format!("Published repository {name}"))
 	} else {
 		error(&format!("Failed to send repository: status code {}", resp.status()))
 	}
@@ -305,7 +305,7 @@ fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
 	let command = repository.script(&script)
 		.ok_or(UtilityError::ScriptNotFound(script))?;
 
-	info(&format!("Running script{}\n", name.map(|s| format!(" for link {}", s)).unwrap_or("".to_string())));
+	info(&format!("Running script{}\n", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
 
 	let status = std::process::Command::new("sh")
 		.current_dir(repository.path())
@@ -325,7 +325,7 @@ fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
 }
 
 fn cmd_fetch(name: String) -> Result<(), UtilityError> {
-	let url = format!("https://api.batl.circetools.net/pkg/{}", name);
+	let url = format!("https://api.batl.circetools.net/pkg/{name}");
 
 	let resp = ureq::get(&url)
 		.call()?;
@@ -341,7 +341,7 @@ fn cmd_fetch(name: String) -> Result<(), UtilityError> {
 
 	tar.unpack(repository_path)?;
 
-	success(&format!("Fetched repository {}", name));
+	success(&format!("Fetched repository {name}"));
 
 	Ok(())
 }

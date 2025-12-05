@@ -56,9 +56,8 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 
 		let filename = path.file_name().unwrap().to_str().unwrap();
 
-		if filename.starts_with('@') {
-			let new_name = filename[1..].to_string();
-			let new_name = format!("{}{}/", name, new_name);
+		if let Some(stripped) = filename.strip_prefix('@') {
+			let new_name = format!("{name}{stripped}/");
 
 			to_search.extend(
 				std::fs::read_dir(path)?
@@ -67,7 +66,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 					})
 			);
 		} else {
-			found.push(format!("{}{}", name, filename));
+			found.push(format!("{name}{filename}"));
 		}
 	}
 
@@ -78,7 +77,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 			}
 		}
 
-		println!("{}", name);
+		println!("{name}");
 	}
 
 	Ok(())
@@ -108,7 +107,7 @@ fn cmd_delete(name: String) -> Result<(), UtilityError> {
 
 	workspace.destroy()?;
 
-	success(&format!("Workspace {} deleted", name));
+	success(&format!("Workspace {name} deleted"));
 
 	Ok(())
 }

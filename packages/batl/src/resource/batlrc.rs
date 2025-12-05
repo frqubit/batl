@@ -6,13 +6,13 @@ pub type BatlRc0_2_2 = BatlRc0_2_1;
 
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-#[allow(clippy::exhaustive_structs)]
+#[expect(clippy::exhaustive_structs)]
 pub struct BatlRc0_2_1 {
 	pub api: Api0_2_1
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[allow(clippy::exhaustive_structs)]
+#[expect(clippy::exhaustive_structs)]
 pub struct Api0_2_1 {
 	pub credentials: String
 }

@@ -21,9 +21,9 @@ pub use self::workspace::Workspace;
 pub trait Resource {
 	type Config;
 
-	fn path(&self) -> &Path;
-	fn name(&self) -> &Name;
 	fn config(&self) -> &Self::Config;
+	fn name(&self) -> &Name;
+	fn path(&self) -> &Path;
 }
 
 /// A Battalion resource name
@@ -34,14 +34,14 @@ pub trait Resource {
 pub struct Name(Vec<String>);
 
 impl Name {
-	/// Create a new battalion resource name
-	fn new(components: Vec<String>) -> Self {
-		Self(components)
-	}
-
 	/// Get the path components of a name
 	const fn components(&self) -> &Vec<String> {
 		&self.0
+	}
+
+	/// Create a new battalion resource name
+	const fn new(components: Vec<String>) -> Self {
+		Self(components)
 	}
 }
 
@@ -96,7 +96,7 @@ impl FromStr for Name {
 	}
 }
 
-#[allow(clippy::fallible_impl_from)]
+#[expect(clippy::fallible_impl_from, reason = "FIX fromstr is infallible")]
 impl From<String> for Name {
 	#[inline]
 	fn from(value: String) -> Self {
@@ -104,7 +104,7 @@ impl From<String> for Name {
 	}
 }
 
-#[allow(clippy::fallible_impl_from)]
+#[expect(clippy::fallible_impl_from, reason = "FIX fromstr is infallible")]
 impl From<&str> for Name {
 	#[inline]
 	fn from(value: &str) -> Self {
@@ -119,7 +119,7 @@ impl Display for Name {
 	}
 }
 
-#[allow(clippy::missing_trait_methods)]
+#[expect(clippy::missing_trait_methods, reason = "serde autoimpls methods")]
 impl<'de> Deserialize<'de> for Name {
 	#[inline]
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -129,14 +129,14 @@ impl<'de> Deserialize<'de> for Name {
 		/// serde visitor for a battalion resource name
 		struct NameVisitor;
 
-		impl<'de> Visitor<'de> for NameVisitor {
+		impl Visitor<'_> for NameVisitor {
 			type Value = Name;
 
 			fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
 				formatter.write_str("A valid resource name")
 			}
 
-			#[allow(clippy::map_err_ignore)]
+			#[expect(clippy::map_err_ignore, reason = "err specifics not important")]
 			fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
 			where
 				E: de::Error

@@ -41,25 +41,24 @@
 
 #![warn(
     clippy::all,
-    clippy::restriction,
     clippy::pedantic,
     clippy::nursery,
     clippy::cargo
 )]
 
 // Current requirement, might fix later idk
-#![allow(clippy::multiple_crate_versions)]
+#![allow(clippy::multiple_crate_versions, reason = "required, may fix")]
+#![allow(clippy::min_ident_chars, reason = "rule is overly noisy, may reenable in future")]
 
 // Remove clippy contradictions here
-#![allow(clippy::blanket_clippy_restriction_lints)]
-#![allow(clippy::implicit_return)]
-#![allow(clippy::self_named_module_files)]
-#![allow(clippy::unseparated_literal_suffix)]
-#![allow(clippy::pub_with_shorthand)]
-#![allow(clippy::question_mark_used)]
-#![allow(clippy::absolute_paths)]
-#![allow(clippy::min_ident_chars)]
-#![allow(clippy::pub_use)]
+// #![allow(clippy::blanket_clippy_restriction_lints)]
+#![allow(clippy::implicit_return, reason = "implicit return is repo convention")]
+#![allow(clippy::self_named_module_files, reason = "self named module is repo convention")]
+#![allow(clippy::unseparated_literal_suffix, reason = "no underscore suffix is repo convention")]
+// #![allow(clippy::pub_with_shorthand)]
+#![allow(clippy::question_mark_used, reason = "err? is repo convention")]
+#![allow(clippy::absolute_paths, reason = "abspaths not against repo convention")]
+#![allow(clippy::pub_use, reason = "required for library")]
 
 
 pub mod error;

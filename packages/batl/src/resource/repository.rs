@@ -298,7 +298,7 @@ pub enum AnyTomlConfig {
 	V0_2_0(TomlConfig0_2_0)
 }
 
-#[allow(clippy::missing_trait_methods)]
+#[expect(clippy::missing_trait_methods)]
 impl TomlConfig for AnyTomlConfig {
 	#[inline]
 	fn read_toml(path: &Path) -> Result<Self, batlerror::ReadConfigError> {
