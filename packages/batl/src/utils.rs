@@ -35,7 +35,7 @@ pub enum UtilityError {
 	#[error("Resource cannot be collected: {0}")]
 	ResourceNotCollected(String),
 	#[error("Network Error: {0}")]
-	NetworkError(#[from] ureq::Error),
+	NetworkError(#[from] Box<ureq::Error>),
 	#[error("Unknown")]
 	Unknown
 }
@@ -90,6 +90,12 @@ impl From<batlerror::CreateDependentResourceError> for UtilityError {
 			batlerror::CreateDependentResourceError::Dependent(e) => e.into(),
 			_ => UtilityError::Unknown
 		}
+	}
+}
+
+impl From<ureq::Error> for UtilityError {
+	fn from(value: ureq::Error) -> Self {
+		UtilityError::NetworkError(Box::new(value))
 	}
 }
 
