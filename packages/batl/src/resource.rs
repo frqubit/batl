@@ -59,7 +59,7 @@ impl From<&Name> for PathBuf {
 		let parts_without_end = parts_rev.rev();
 
 		for part in parts_without_end {
-			path = path.join(format!("@{part}"));
+			path = path.join(format!("_{part}"));
 		}
 
 		path = path.join(last.cloned().unwrap_or_default());
@@ -78,7 +78,7 @@ impl From<&Path> for Name {
 		for val in value {
 			let val_string = val.to_string_lossy().to_string();
 
-			if val_string.starts_with('@') {
+			if val_string.starts_with('_') {
 				parts.push(val_string.get(1..).unwrap_or_default().to_owned());
 			}
 		}

@@ -56,7 +56,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 
 		let filename = path.file_name().unwrap().to_str().unwrap();
 
-		if let Some(stripped) = filename.strip_prefix('@') {
+		if let Some(stripped) = filename.strip_prefix('_') {
 			let new_name = format!("{name}{stripped}/");
 
 			to_search.extend(

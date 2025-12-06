@@ -1,9 +1,11 @@
-use batl::resource::{self as batlres, BatlRc};
+use batl::resource::batlrc::AnyBatlRc;
+use batl::resource::{self as batlres, BatlRc, batlrc::BatlRcLatest};
 use batl::resource::tomlconfig::{TomlConfig, write_toml};
 use crate::output::success;
 use crate::utils::UtilityError;
 use std::collections::HashMap;
 use std::env::current_dir;
+use std::path::PathBuf;
 
 pub mod workspace;
 pub mod link;
@@ -83,6 +85,42 @@ pub fn cmd_remove(name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
+fn migrate_at_to_underscore(path: &PathBuf) -> Result<(), UtilityError> {
+	let mut to_search: Vec<PathBuf> = std::fs::read_dir(path)?
+		.filter_map(|entry| {
+			Some(entry.ok()?.path())
+		})
+		.collect();
+
+	while let Some(path) = to_search.pop() {
+		if !path.is_dir() {
+			continue;
+		}
+
+		let filename = path.file_name().unwrap().to_str().unwrap();
+
+		if filename.strip_prefix('@').is_some() {
+			migrate_at_to_underscore(&path)?;
+		}
+	}
+
+	let this_filename = path.file_name()
+		.unwrap()
+		.to_string_lossy();
+
+	if let Some(noprefix) = this_filename.strip_prefix('@') {
+
+		let path_parent = path.parent().unwrap().to_path_buf();
+		let new_path = path_parent.join(
+			format!("_{noprefix}")
+		);
+
+		std::fs::rename(path, new_path)?;
+	}
+
+	Ok(())
+}
+
 pub fn cmd_upgrade() -> Result<(), UtilityError> {
 	let batl_root = batl::system::batl_root()
 		.ok_or(UtilityError::ResourceDoesNotExist("Battalion root".to_string()))?;
@@ -98,12 +136,32 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 		success("Added gen folder");
 	}
 
-	if batl::system::batlrc().is_none() {
+	if batl::system::batlrc()?.is_none() {
+		// migrate @ to _
+		migrate_at_to_underscore(&batl::system::repository_root()
+			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
+
+		migrate_at_to_underscore(&batl::system::workspace_root()
+			.ok_or(UtilityError::ResourceDoesNotExist("Workspace root".to_string()))?)?;
+
 		let batlrc = BatlRc::default();
 	
 		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &batlrc)?;
 
 		success("Added batlrc toml");
+	}
+
+	if let Some(AnyBatlRc::V0_2_1(v021)) = batl::system::batlrc()? {
+		// migrate @ to _
+		migrate_at_to_underscore(&batl::system::repository_root()
+			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
+
+		migrate_at_to_underscore(&batl::system::workspace_root()
+			.ok_or(UtilityError::ResourceDoesNotExist("Workspace root".to_string()))?)?;
+
+		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &BatlRcLatest::from(v021))?;
+
+		success("migrated batlrc to 0.3.0");
 	}
 
 	Ok(())
@@ -114,8 +172,9 @@ pub fn cmd_auth() -> Result<(), UtilityError> {
 
 	let api_key: String = key_prompt.with_prompt("API key").interact()?;
 
-	let mut batlrc = batl::system::batlrc()
-		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?;
+	let mut batlrc: BatlRc = batl::system::batlrc()?
+		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?
+		.into();
 
 	batlrc.api.credentials = api_key;
 

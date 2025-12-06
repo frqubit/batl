@@ -1,4 +1,4 @@
-use batl::resource::{repository, Repository, Resource, Name};
+use batl::resource::{BatlRc, Name, Repository, Resource, repository};
 use batl::resource::repository::CreateRepositoryOptions;
 use batl::resource::tomlconfig::{TomlConfig, RepositoryGit0_2_2};
 use clap::Subcommand;
@@ -110,7 +110,7 @@ fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 
 		let filename = path.file_name().unwrap().to_str().unwrap();
 
-		if let Some(filename) = filename.strip_prefix('@') {
+		if let Some(filename) = filename.strip_prefix('_') {
 			let new_name = filename.to_string();
 			let new_name = format!("{name}{new_name}/");
 
@@ -257,8 +257,9 @@ fn cmd_archive(name: String) -> Result<(), UtilityError> {
 }
 
 fn cmd_publish(name: String) -> Result<(), UtilityError> {
-	let batlrc = batl::system::batlrc()
-		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?;
+	let batlrc: BatlRc = batl::system::batlrc()?
+		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?
+		.into();
 
 	let repository = Repository::load(name.as_str().into())?
 		.ok_or(UtilityError::ResourceDoesNotExist("Repository".into()))?;

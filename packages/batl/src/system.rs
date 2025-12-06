@@ -1,4 +1,5 @@
-use crate::resource::batlrc::BatlRcLatest;
+use crate::error::ReadConfigError;
+use crate::resource::batlrc::{AnyBatlRc, BatlRcLatest};
 use std::env::var as env_var;
 use std::path::PathBuf;
 
@@ -73,9 +74,12 @@ pub fn batlrc_path() -> Option<PathBuf> {
 }
 
 /// Get the battalion RC config
+/// 
+/// # Errors
+/// 
+/// Raises an error if the config does not exist
+/// or cannot be legally parsed
 #[inline]
-#[must_use]
-pub fn batlrc() -> Option<BatlRcLatest> {
-	let config_str = std::fs::read_to_string(batlrc_path()?).ok()?;
-	toml::from_str(&config_str).ok()
+pub fn batlrc() -> Result<Option<AnyBatlRc>, ReadConfigError> {
+	AnyBatlRc::read_toml()
 }
