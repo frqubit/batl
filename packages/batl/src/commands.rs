@@ -7,8 +7,6 @@ use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::PathBuf;
 
-pub mod workspace;
-pub mod link;
 pub mod repository;
 
 
@@ -131,7 +129,6 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 		std::fs::create_dir(&gen_)?;
 		std::fs::create_dir(gen_.join("archives"))?;
 		std::fs::create_dir(gen_.join("archives/repositories"))?;
-		std::fs::create_dir(gen_.join("archives/workspaces"))?;
 
 		success("Added gen folder");
 	}
@@ -140,9 +137,6 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 		// migrate @ to _
 		migrate_at_to_underscore(&batl::system::repository_root()
 			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
-
-		migrate_at_to_underscore(&batl::system::workspace_root()
-			.ok_or(UtilityError::ResourceDoesNotExist("Workspace root".to_string()))?)?;
 
 		let batlrc = BatlRc::default();
 	
@@ -155,9 +149,6 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 		// migrate @ to _
 		migrate_at_to_underscore(&batl::system::repository_root()
 			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
-
-		migrate_at_to_underscore(&batl::system::workspace_root()
-			.ok_or(UtilityError::ResourceDoesNotExist("Workspace root".to_string()))?)?;
 
 		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &BatlRcLatest::from(v021))?;
 

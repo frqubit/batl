@@ -2,6 +2,14 @@
 
 ## [0.3.0] - Unreleased
 
+### Changed
+
+- Battalion resources now use _{name} instead of @{name}
+
+### Removed
+
+- Workspaces no longer exist
+
 ## [0.2.2] - Shelved
 
 ### Added

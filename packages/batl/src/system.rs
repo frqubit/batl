@@ -1,5 +1,5 @@
 use crate::error::ReadConfigError;
-use crate::resource::batlrc::{AnyBatlRc, BatlRcLatest};
+use crate::resource::batlrc::{AnyBatlRc};
 use std::env::var as env_var;
 use std::path::PathBuf;
 
@@ -36,13 +36,6 @@ pub fn batl_root() -> Option<PathBuf> {
 	}
 
 	None
-}
-
-/// Get the battalion workspace root
-#[inline]
-#[must_use]
-pub fn workspace_root() -> Option<PathBuf> {
-	batl_root().map(|p| p.join("workspaces"))
 }
 
 /// Get the battalion repository root

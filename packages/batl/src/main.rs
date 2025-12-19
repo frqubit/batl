@@ -15,8 +15,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum SubCommand {
-	Workspace(SubCmdArgs<commands::workspace::Commands>),
-	Link(SubCmdArgs<commands::link::Commands>),
 	Repository(SubCmdArgs<commands::repository::Commands>),
 	Setup,
 	Add {
@@ -41,8 +39,6 @@ fn main() {
 	let cli = Cli::parse();
 
 	let result = match cli.subcmd {
-		SubCommand::Workspace(args) => commands::workspace::run(args.subcmd),
-		SubCommand::Link(args) => commands::link::run(args.subcmd),
 		SubCommand::Repository(args) => commands::repository::run(args.subcmd),
 		SubCommand::Setup => commands::cmd_setup(),
 		SubCommand::Add { name } => commands::cmd_add(name),

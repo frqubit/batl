@@ -10,12 +10,10 @@ pub mod batlrc;
 pub mod repository;
 pub mod restrict;
 pub mod tomlconfig;
-pub mod workspace;
 
 pub use self::archive::Archive;
 pub use self::batlrc::BatlRcLatest as BatlRc;
 pub use self::repository::Repository;
-pub use self::workspace::Workspace;
 
 
 pub trait Resource {
