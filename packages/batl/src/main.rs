@@ -15,39 +15,52 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum SubCommand {
+	#[command(about = "[DEPRECATED 0.3.0] Old repository command aliases")]
 	Repository(SubCmdArgs<commands::repository::Commands>),
+	#[command(about = "Lists present battalion repositories")]
 	Ls {
 		filter: Option<String>
 	},
+	#[command(about = "Creates a new battalion repository")]
 	Init {
 		name: String
 	},
+	#[command(about = "Deletes a battalion repository (be careful!)")]
 	Delete {
 		name: String
 	},
+	#[command(about = "Publishes a repository")]
 	Publish {
 		name: String
 	},
+	#[command(about = "Fetches a repository from the battalion registry")]
 	Fetch {
 		name: String
 	},
+	#[command(about = "Gets the system path to a repository")]
 	Which {
 		name: String
 	},
+	#[command(about = "Executes a command on a repository")]
 	Exec {
 		#[arg(short = 'n')]
 		name: Option<String>,
 		script: String
 	},
+	#[command(about = "Sets up battalion")]
 	Setup,
+	#[command(about = "Adds a dependency")]
 	Add {
 		name: String
 	},
+	#[command(about = "Removes a dependency")]
 	#[command(alias = "rm")]
 	Remove {
 		name: String
 	},
+	#[command(about = "Upgrades the installed battalion to the newest version")]
 	Upgrade,
+	#[command(about = "Adds an API key")]
 	Auth
 }
 
