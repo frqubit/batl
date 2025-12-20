@@ -188,7 +188,6 @@ pub fn cmd_setup() -> Result<(), UtilityError> {
 		.ok_or(UtilityError::ResourceDoesNotExist("Home directory".to_string()))?
 		.join("battalion");
 
-	std::fs::create_dir_all(batl_root.join("workspaces"))?;
 	std::fs::create_dir_all(batl_root.join("repositories"))?;
 
 	let batlrc = BatlRc::default();

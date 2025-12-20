@@ -15,6 +15,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum SubCommand {
+	Repository(SubCmdArgs<commands::repository::Commands>),
 	Ls {
 		filter: Option<String>
 	},
@@ -61,6 +62,7 @@ fn main() {
 	let cli = Cli::parse();
 
 	let result = match cli.subcmd {
+		SubCommand::Repository(args) => commands::repository::run(args.subcmd),
 		SubCommand::Setup => commands::cmd_setup(),
 		SubCommand::Add { name } => commands::cmd_add(name),
 		SubCommand::Remove { name } => commands::cmd_remove(name),
