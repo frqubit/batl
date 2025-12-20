@@ -15,7 +15,29 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum SubCommand {
-	Repository(SubCmdArgs<commands::repository::Commands>),
+	Ls {
+		filter: Option<String>
+	},
+	Init {
+		name: String
+	},
+	Delete {
+		name: String
+	},
+	Publish {
+		name: String
+	},
+	Fetch {
+		name: String
+	},
+	Which {
+		name: String
+	},
+	Exec {
+		#[arg(short = 'n')]
+		name: Option<String>,
+		script: String
+	},
 	Setup,
 	Add {
 		name: String
@@ -39,12 +61,18 @@ fn main() {
 	let cli = Cli::parse();
 
 	let result = match cli.subcmd {
-		SubCommand::Repository(args) => commands::repository::run(args.subcmd),
 		SubCommand::Setup => commands::cmd_setup(),
 		SubCommand::Add { name } => commands::cmd_add(name),
 		SubCommand::Remove { name } => commands::cmd_remove(name),
 		SubCommand::Upgrade => commands::cmd_upgrade(),
-		SubCommand::Auth => commands::cmd_auth()
+		SubCommand::Auth => commands::cmd_auth(),
+		SubCommand::Ls { filter } => commands::cmd_ls(filter),
+		SubCommand::Init { name } => commands::cmd_init(name),
+		SubCommand::Delete { name } => commands::cmd_delete(name),
+		SubCommand::Publish { name } => commands::cmd_publish(name),
+		SubCommand::Fetch { name } => commands::cmd_fetch(name),
+		SubCommand::Exec { name, script } => commands::cmd_exec(name, script),
+		SubCommand::Which { name } => commands::cmd_which(name)
 	};
 
 	if let Err(err) = result {
