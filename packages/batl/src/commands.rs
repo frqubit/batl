@@ -7,6 +7,7 @@ use crate::utils::{BATL_NAME_REGEX, UtilityError, REGISTRY_DOMAIN};
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::PathBuf;
+use colored::*;
 
 pub mod repository;
 
@@ -78,6 +79,29 @@ pub fn cmd_delete(name: String) -> Result<(), UtilityError> {
 		.destroy()?;
 
 	success("Deleted repository successfully");
+
+	Ok(())
+}
+
+pub fn cmd_search(name: Option<String>) -> Result<(), UtilityError> {
+	let name_query = name.map(|v| format!("?q={v}")).unwrap_or("".into());
+	let url = format!("{REGISTRY_DOMAIN}/pkg{name_query}");
+
+	let resp = ureq::get(&url)
+		.call()?;
+
+	let mut body = String::new();
+	resp.into_reader().read_to_string(&mut body)?;
+
+	let items: Vec<String> = serde_json::from_str(&body)?;
+
+	for item in items {
+		if let Some(repo) = item.strip_suffix(".tar") {
+			println!("{}", repo.italic());
+		} else {
+			println!("{}", item.blue());
+		}
+	}
 
 	Ok(())
 }

@@ -24,6 +24,8 @@ pub enum UtilityError {
 	ResourceAlreadyExists(String),
 	#[error("Invalid config")]
 	InvalidConfig,
+	#[error("Invalid JSON from API")]
+	InvalidApiJson(#[from] serde_json::Error),
 	#[error("Link not found")]
 	LinkNotFound,
 	#[error("Invalid name: {0}")]

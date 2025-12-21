@@ -61,7 +61,11 @@ enum SubCommand {
 	#[command(about = "Upgrades the installed battalion to the newest version")]
 	Upgrade,
 	#[command(about = "Adds an API key")]
-	Auth
+	Auth,
+	#[command(about = "Search registry for repositories")]
+	Search {
+		name: Option<String>
+	}
 }
 
 #[derive(Args)]
@@ -87,7 +91,8 @@ fn main() {
 		SubCommand::Publish { name } => commands::cmd_publish(name),
 		SubCommand::Fetch { name } => commands::cmd_fetch(name),
 		SubCommand::Exec { name, script } => commands::cmd_exec(name, script),
-		SubCommand::Which { name } => commands::cmd_which(name)
+		SubCommand::Which { name } => commands::cmd_which(name),
+		SubCommand::Search { name } => commands::cmd_search(name)
 	};
 
 	if let Err(err) = result {
