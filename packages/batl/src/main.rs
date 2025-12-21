@@ -45,7 +45,8 @@ enum SubCommand {
 	Exec {
 		#[arg(short = 'n')]
 		name: Option<String>,
-		script: String
+		script: String,
+		args: Vec<String>
 	},
 	#[command(about = "Sets up battalion")]
 	Setup,
@@ -90,7 +91,7 @@ fn main() {
 		SubCommand::Delete { name } => commands::cmd_delete(name),
 		SubCommand::Publish { name } => commands::cmd_publish(name),
 		SubCommand::Fetch { name } => commands::cmd_fetch(name),
-		SubCommand::Exec { name, script } => commands::cmd_exec(name, script),
+		SubCommand::Exec { name, script, args } => commands::cmd_exec(name, script, args),
 		SubCommand::Which { name } => commands::cmd_which(name),
 		SubCommand::Search { name } => commands::cmd_search(name)
 	};

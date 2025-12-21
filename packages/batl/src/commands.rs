@@ -155,7 +155,7 @@ pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError> {
+pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Result<(), UtilityError> {
 	let repository = match &name {
 		Some(val) => {
 			Repository::load(val.as_str().into())?
@@ -175,6 +175,8 @@ pub fn cmd_exec(name: Option<String>, script: String) -> Result<(), UtilityError
 		.env("BATL_PWD", batl_pwd.as_os_str())
 		.arg("-c")
 		.arg(command)
+		.arg("batl-executor")
+		.args(args)
 		.status()?;
 
 

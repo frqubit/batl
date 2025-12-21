@@ -86,7 +86,7 @@ pub fn run(cmd: Commands) -> Result<(), UtilityError> {
 			super::cmd_which(name)
 		},
 		Commands::Exec { name, script } => {
-			super::cmd_exec(name, script)
+			super::cmd_exec(name, script, vec![])
 		}
 	}
 }
