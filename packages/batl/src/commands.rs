@@ -3,7 +3,7 @@ use batl::resource::batlrc::AnyBatlRc;
 use batl::resource::{self as batlres, BatlRc, batlrc::BatlRcLatest};
 use batl::resource::tomlconfig::{TomlConfig, write_toml};
 use crate::output::{error, info, success};
-use crate::utils::{BATL_NAME_REGEX, UtilityError};
+use crate::utils::{BATL_NAME_REGEX, UtilityError, REGISTRY_DOMAIN};
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::PathBuf;
@@ -94,7 +94,7 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 	let archive = repository.archive()
 		.ok_or(UtilityError::ResourceDoesNotExist("Archive".into()))?;
 
-	let url = format!("https://api.batl.circetools.net/pkg/{}", &repository.name().to_string().replace('.', "/"));
+	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", &repository.name().to_string().replace('.', "/"));
 
 	let resp = ureq::post(&url)
 		.set("x-api-key", &batlrc.api.credentials)
@@ -110,7 +110,7 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 }
 
 pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
-	let url = format!("https://api.batl.circetools.net/pkg/{name}");
+	let url = format!("{REGISTRY_DOMAIN}/pkg/{name}");
 
 	let resp = ureq::get(&url)
 		.call()?;

@@ -12,6 +12,8 @@ lazy_static! {
 	pub static ref BATL_LINK_REGEX: Regex = Regex::new(r"^[a-zA-Z][a-zA-Z0-9_\-]*$").unwrap();
 }
 
+pub const REGISTRY_DOMAIN: &str = "https://api.batl.circetools.net";
+
 #[derive(Error, Debug)]
 pub enum UtilityError {
 	#[error("IO Error: {0}")]
