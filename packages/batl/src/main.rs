@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand, Args};
 
+use crate::utils::UtilityError;
+
 mod commands;
 mod output;
 mod utils;
@@ -66,7 +68,9 @@ enum SubCommand {
 	#[command(about = "Search registry for repositories")]
 	Search {
 		name: Option<String>
-	}
+	},
+	#[command(external_subcommand)]
+	ExecShorthand(Vec<String>)
 }
 
 #[derive(Args)]
@@ -93,11 +97,31 @@ fn main() {
 		SubCommand::Fetch { name } => commands::cmd_fetch(name),
 		SubCommand::Exec { name, script, args } => commands::cmd_exec(name, script, args),
 		SubCommand::Which { name } => commands::cmd_which(name),
-		SubCommand::Search { name } => commands::cmd_search(name)
+		SubCommand::Search { name } => commands::cmd_search(name),
+		SubCommand::ExecShorthand(args) => cmd_execshorthand(args)
 	};
 
 	if let Err(err) = result {
 		output::error(err.to_string().as_str());
 		std::process::exit(1);
+	}
+}
+
+fn cmd_execshorthand(args: Vec<String>) -> Result<(), UtilityError> {
+	let mut args = args.into_iter();
+	let resource = args.next().ok_or(UtilityError::ResourceDoesNotExist("Resource name".into()))?;
+
+	if let Some((name, cmd)) = resource.split_once(':') {
+		commands::cmd_exec(
+			Some(name.into()),
+			cmd.into(),
+			args.collect()
+		)
+	} else {
+		commands::cmd_exec(
+			Some(resource.clone()),
+			"exec".into(),
+			args.collect()
+		)
 	}
 }

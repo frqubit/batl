@@ -166,7 +166,7 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Resu
 	let command = repository.script(&script)
 		.ok_or(UtilityError::ScriptNotFound(script))?;
 
-	info(&format!("Running script{}\n", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
+	info(&format!("Running script{}", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
 
 	let batl_pwd = current_dir()?;
 
@@ -184,7 +184,6 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Resu
 		return Err(UtilityError::ScriptError(format!("Exit code {}", status.code().unwrap_or(0))))
 	}
 
-	println!();
 	success("Script completed successfully");
 
 	Ok(())
