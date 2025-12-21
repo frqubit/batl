@@ -30,7 +30,7 @@ pub fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 
 		if let Some(filename) = filename.strip_prefix('_') {
 			let new_name = filename.to_string();
-			let new_name = format!("{name}{new_name}/");
+			let new_name = format!("{name}{new_name}.");
 
 			to_search.extend(
 				std::fs::read_dir(path)?
@@ -90,10 +90,11 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 	let repository = Repository::load(name.as_str().into())?
 		.ok_or(UtilityError::ResourceDoesNotExist("Repository".into()))?;
 
+	// let archive = repository.archive_gen()?;
 	let archive = repository.archive()
 		.ok_or(UtilityError::ResourceDoesNotExist("Archive".into()))?;
 
-	let url = format!("https://api.batl.circetools.net/pkg/{}", &repository.name().to_string());
+	let url = format!("https://api.batl.circetools.net/pkg/{}", &repository.name().to_string().replace('.', "/"));
 
 	let resp = ureq::post(&url)
 		.set("x-api-key", &batlrc.api.credentials)

@@ -21,9 +21,11 @@ impl Archive {
 	/// Also returns None if the resource does not exist
 	#[inline]
 	pub fn load(name: &Name) -> Result<Option<Self>, batlerror::GeneralResourceError> {
+		let slashed_name = name.to_string().replace('.', "/");
+
 		let tar_path = crate::system::archive_root().map(|p| p
 			.join("repositories")
-			.join(format!("{name}.tar"))
+			.join(format!("{slashed_name}.tar"))
 		);
 
 		if let Some(tar_path) = tar_path {

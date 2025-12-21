@@ -196,7 +196,6 @@ impl Repository {
 	/// # Errors
 	/// 
 	/// Propogates any errors found along the way
-	#[deprecated]
 	#[inline]
 	pub fn archive_gen(&self) -> Result<Archive, batlerror::CreateDependentResourceError> {
 		let mut walk_builder = ignore::WalkBuilder::new(self.path());
@@ -212,7 +211,7 @@ impl Repository {
 		let tar_path = crate::system::archive_root()
 			.ok_or(batlerror::CreateResourceError::NotSetup)?
 			.join("repositories")
-			.join(format!("{}.tar", self.name));
+			.join(format!("{}.tar", self.name.to_string().replace('.', "/")));
 
 		if let Some(tar_parent) = tar_path.parent() {
 			std::fs::create_dir_all(tar_parent)?;

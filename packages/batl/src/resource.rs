@@ -90,7 +90,7 @@ impl FromStr for Name {
 
 	#[inline]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(Self::new(s.split('/').map(ToString::to_string).collect()))
+		Ok(Self::new(s.split('.').map(ToString::to_string).collect()))
 	}
 }
 
@@ -113,7 +113,7 @@ impl From<&str> for Name {
 impl Display for Name {
 	#[inline]
 	fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-		f.write_str(&self.0.join("/"))
+		f.write_str(&self.0.join("."))
 	}
 }
 
