@@ -5,35 +5,32 @@ Battalion is a CLI tool for managing codebase relationships. It uses a simple he
 ## Installation
 
 ```bash
-cargo install batl
+cargo install --git https://github.com/frqubit/batl batl
 batl setup
 
 # (optional) Install batlas
-batl repository fetch battalion/batlas
-batl repository exec -n battalion/batlas build
-batl repository exec -n battalion/batlas install
+batl fetch battalion.batlas
+batl exec -n battalion.batlas build
+batl exec -n battalion.batlas install
 ```
 
 ## Usage
 
 ```bash
 # Create a new repository
-batl repository init prototypes/awesome-project
-
-# Create a new workspace
-batl workspace init --ref prototypes/awesome-project
+batl init prototypes.awesome-project
 
 # Create a library
-batl repository init prototypes/awesome-library
+batl init prototypes.awesome-library
 
 # cd into the workspace
-cd $(batl workspace which prototypes/awesome-project)
+cd $(batl workspace which prototypes.awesome-project)
 
 # ...or if you use batlas with VSCode...
-batlas prototypes/awesome-project code %!
+batlas prototypes.awesome-project code %!
 
-# create a link while in directory of workspace
-batl link init -n library prototypes/awesome-library
+# create a link while in directory of workspace [OLD]
+batl link init -n library prototypes.awesome-library
 
 # Start building!
 ```
