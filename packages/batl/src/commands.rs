@@ -15,44 +15,67 @@ pub fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 	let repo_root = batl::system::repository_root()
 		.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?;
 
-	let mut to_search: Vec<(String, PathBuf)> = std::fs::read_dir(repo_root)?
-		.filter_map(|entry| {
-			Some(("".to_string(), entry.ok()?.path()))
-		})
-		.collect();
-	let mut found: Vec<String> = Vec::new();
+	let filter_path = filter.map(|v| {
+		let name = Name::from(v);
+		name.components().clone()
+	}).unwrap_or_default().into_iter()
+		.map(|v| format!("_{v}"))
+		.collect::<PathBuf>();
 
-	while let Some((name, path)) = to_search.pop() {
-		if !path.is_dir() {
-			continue;
-		}
+	let search_path = repo_root.join(filter_path);
 
-		let filename = path.file_name().unwrap().to_str().unwrap();
-
-		if let Some(filename) = filename.strip_prefix('_') {
-			let new_name = filename.to_string();
-			let new_name = format!("{name}{new_name}.");
-
-			to_search.extend(
-				std::fs::read_dir(path)?
-					.filter_map(|entry| {
-						Some((new_name.clone(), entry.ok()?.path()))
-					})
-			);
-		} else {
-			found.push(format!("{name}{filename}"));
-		}
+	if !search_path.exists() {
+		return Ok(());
 	}
 
-	for name in found {
-		if let Some(filter_str) = &filter {
-			if !name.starts_with(filter_str) {
-				continue;
-			}
-		}
+	let found = std::fs::read_dir(search_path)?
+		.filter_map(|entry| {
+			entry.ok()
+		}).map(|entry| {
+			let name_os = entry.file_name();
+			let name = name_os.to_string_lossy();
 
+			if let Some(folder) = name.strip_prefix('_') {
+				folder.blue()
+			} else {
+				name.italic()
+			}
+		});
+	
+	for name in found {
 		println!("{name}");
 	}
+
+	//
+
+	// let mut to_search: Vec<(String, PathBuf)> = std::fs::read_dir(repo_root)?
+	// 	.filter_map(|entry| {
+	// 		Some(("".to_string(), entry.ok()?.path()))
+	// 	})
+	// 	.collect();
+	// let mut found: Vec<String> = Vec::new();
+
+	// while let Some((name, path)) = to_search.pop() {
+	// 	if !path.is_dir() {
+	// 		continue;
+	// 	}
+
+	// 	let filename = path.file_name().unwrap().to_str().unwrap();
+
+	// 	if let Some(filename) = filename.strip_prefix('_') {
+	// 		let new_name = filename.to_string();
+	// 		let new_name = format!("{name}{new_name}.");
+
+	// 		to_search.extend(
+	// 			std::fs::read_dir(path)?
+	// 				.filter_map(|entry| {
+	// 					Some((new_name.clone(), entry.ok()?.path()))
+	// 				})
+	// 		);
+	// 	} else {
+	// 		found.push(format!("{name}{filename}"));
+	// 	}
+	// }
 
 	Ok(())
 }

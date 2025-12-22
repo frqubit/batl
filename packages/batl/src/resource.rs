@@ -33,12 +33,14 @@ pub struct Name(Vec<String>);
 
 impl Name {
 	/// Get the path components of a name
-	const fn components(&self) -> &Vec<String> {
+	#[must_use]
+	pub const fn components(&self) -> &Vec<String> {
 		&self.0
 	}
 
 	/// Create a new battalion resource name
-	const fn new(components: Vec<String>) -> Self {
+	#[must_use]
+	pub const fn new(components: Vec<String>) -> Self {
 		Self(components)
 	}
 }
