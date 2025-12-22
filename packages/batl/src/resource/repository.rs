@@ -251,6 +251,20 @@ impl Repository {
 	pub fn archive(&self) -> Option<Archive> {
 		Archive::load(&self.name).ok().flatten()
 	}
+
+	pub fn add_dependency(&mut self, name: Name) -> Result<&mut Repository, batlerror::GeneralResourceError> {
+		self.config.dependencies.insert(name, "latest".to_string());
+		self.save()?;
+
+		Ok(self)
+	}
+
+	pub fn remove_dependency(&mut self, name: Name) -> Result<&mut Repository, batlerror::GeneralResourceError> {
+		self.config.dependencies.remove(&name);
+		self.save()?;
+
+		Ok(self)
+	}
 }
 
 impl Resource for Repository {

@@ -256,24 +256,10 @@ pub fn cmd_setup() -> Result<(), UtilityError> {
 }
 
 pub fn cmd_add(name: String) -> Result<(), UtilityError> {
-	let config_path = batlres::repository::TomlConfigLatest::locate(&current_dir()?)
-		.ok_or(UtilityError::ResourceDoesNotExist("Batallion config".to_string()))?;
+	let mut repository = Repository::locate_then_load(&current_dir()?)?
+		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
 
-	let mut config = batlres::repository::TomlConfigLatest::read_toml(&config_path)
-		.map_err(|_| UtilityError::InvalidConfig)?;
-
-	if let Some(mut deps) = config.dependencies {
-		deps.insert(name.as_str().into(), "latest".to_string());
-
-		config.dependencies = Some(deps);
-	} else {
-		let mut deps = HashMap::new();
-		deps.insert(name.as_str().into(), "latest".to_string());
-
-		config.dependencies = Some(deps);
-	}
-
-	write_toml(&config_path, &config)?;
+	repository.add_dependency(name.as_str().into())?;
 
 	success(&format!("Added dependency {name}"));
 
@@ -281,23 +267,10 @@ pub fn cmd_add(name: String) -> Result<(), UtilityError> {
 }
 
 pub fn cmd_remove(name: String) -> Result<(), UtilityError> {
-	let config_path = batlres::repository::TomlConfigLatest::locate(&current_dir()?)
-		.ok_or(UtilityError::ResourceDoesNotExist("Batallion config".to_string()))?;
+	let mut repository = Repository::locate_then_load(&current_dir()?)?
+		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
 
-	let mut config = batlres::repository::TomlConfigLatest::read_toml(&config_path)
-		.map_err(|_| UtilityError::InvalidConfig)?;
-
-	if let Some(mut deps) = config.dependencies {
-		if deps.remove(&name.as_str().into()).is_none() {
-			return Err(UtilityError::ResourceDoesNotExist("Dependency".to_string()))
-		}
-
-		config.dependencies = Some(deps);
-	} else {
-		return Err(UtilityError::ResourceDoesNotExist("Dependency".to_string()));
-	}
-
-	write_toml(&config_path, &config)?;
+	repository.remove_dependency(name.as_str().into())?;
 
 	success(&format!("Removed dependency {name}"));
 
