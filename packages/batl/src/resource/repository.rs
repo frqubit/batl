@@ -159,7 +159,7 @@ impl Repository {
 	/// Returns `None` if no repository is found
 	#[inline]
 	pub fn locate_then_load(path: &Path) -> Result<Option<Self>, batlerror::GeneralResourceError> {
-		TomlConfigLatest::locate(path)
+		AnyTomlConfig::locate(path)
 			.and_then(|p| p.parent().map(Path::to_path_buf))
 			.map(|p| Self::from_path(&p))
 			.transpose()
