@@ -156,13 +156,21 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 }
 
 pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
-	let url = format!("{REGISTRY_DOMAIN}/pkg/{name}");
+	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.to_string().replace('.', "/"));
 
-	let mut resp = ureq::get(&url)
+	let resp = ureq::get(&url)
 		.call()?;
-	let body = resp.body_mut();
 
-	let mut tar = tar::Archive::new(body.as_reader());
+	if resp.status() != 200 {
+		error(&format!("Failed to fetch repository: status code {}", resp.status()));
+		return Ok(())
+	}
+
+	let body = resp
+		.into_body()
+		.into_reader();
+
+	let mut tar = tar::Archive::new(body);
 
 	let repository_path = batl::system::repository_root()
 		.ok_or(UtilityError::ResourceDoesNotExist("Battalion setup".to_string()))?
