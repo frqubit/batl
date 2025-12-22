@@ -110,11 +110,10 @@ pub fn cmd_search(name: Option<String>) -> Result<(), UtilityError> {
 	let name_query = name.map(|v| format!("?q={v}")).unwrap_or("".into());
 	let url = format!("{REGISTRY_DOMAIN}/pkg{name_query}");
 
-	let resp = ureq::get(&url)
-		.call()?;
-
-	let mut body = String::new();
-	resp.into_reader().read_to_string(&mut body)?;
+	let body = ureq::get(&url)
+		.call()?
+		.body_mut()
+		.read_to_string()?;
 
 	let items: Vec<String> = serde_json::from_str(&body)?;
 
@@ -144,7 +143,7 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", &repository.name().to_string().replace('.', "/"));
 
 	let resp = ureq::post(&url)
-		.set("x-api-key", &batlrc.api.credentials)
+		.header("x-api-key", &batlrc.api.credentials)
 		.send(archive.to_file())?;
 
 	if resp.status() == 200 {
@@ -159,11 +158,11 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
 	let url = format!("{REGISTRY_DOMAIN}/pkg/{name}");
 
-	let resp = ureq::get(&url)
+	let mut resp = ureq::get(&url)
 		.call()?;
+	let body = resp.body_mut();
 
-	let body = resp.into_reader();
-	let mut tar = tar::Archive::new(body);
+	let mut tar = tar::Archive::new(body.as_reader());
 
 	let repository_path = batl::system::repository_root()
 		.ok_or(UtilityError::ResourceDoesNotExist("Battalion setup".to_string()))?
@@ -373,9 +372,9 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 }
 
 pub fn cmd_auth() -> Result<(), UtilityError> {
-	let mut key_prompt = dialoguer::Input::new();
+	let key_prompt = dialoguer::Input::new();
 
-	let api_key: String = key_prompt.with_prompt("API key").interact()?;
+	let api_key: String = key_prompt.with_prompt("API key").interact_text()?;
 
 	let mut batlrc: BatlRc = batl::system::batlrc()?
 		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?

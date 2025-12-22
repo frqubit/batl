@@ -40,6 +40,8 @@ pub enum UtilityError {
 	ResourceNotCollected(String),
 	#[error("Network Error: {0}")]
 	NetworkError(#[from] Box<ureq::Error>),
+	#[error("Terminal input error: {0}")]
+	TerminalInputError(#[from] dialoguer::Error),
 	#[error("Unknown")]
 	Unknown
 }
