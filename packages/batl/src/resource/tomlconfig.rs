@@ -2,7 +2,7 @@
 #![allow(clippy::exhaustive_enums)]
 
 use batl_macros::{environment_struct_impl, versioned_identical};
-use crate::error::ReadConfigError;
+use crate::error::*;
 use crate::resource::Name;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
@@ -140,7 +140,7 @@ pub trait TomlConfig: Sized {
 	/// # Errors
 	/// 
 	/// Propogates any toml and IO errors to the caller
-	fn read_toml(path: &Path) -> Result<Self, ReadConfigError>;
+	fn read_toml(path: &Path) -> EyreResult<Self>;
 
 	/// Starts at the path given, then searches all
 	/// parents for a batl.toml, returning the first
@@ -228,7 +228,7 @@ where
 	T: serde::de::DeserializeOwned
 {
 	#[inline]
-	fn read_toml(path: &Path) -> Result<Self, ReadConfigError> {
+	fn read_toml(path: &Path) -> EyreResult<Self> {
 		let config_str = std::fs::read_to_string(path)?;
 		Ok(toml::from_str(&config_str)?)
 	}

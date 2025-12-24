@@ -1,4 +1,4 @@
-use crate::error::ReadConfigError;
+use crate::error::*;
 use crate::resource::batlrc::{AnyBatlRc};
 use std::env::var as env_var;
 use std::path::PathBuf;
@@ -73,6 +73,6 @@ pub fn batlrc_path() -> Option<PathBuf> {
 /// Raises an error if the config does not exist
 /// or cannot be legally parsed
 #[inline]
-pub fn batlrc() -> Result<Option<AnyBatlRc>, ReadConfigError> {
+pub fn batlrc() -> EyreResult<Option<AnyBatlRc>> {
 	AnyBatlRc::read_toml()
 }

@@ -1,4 +1,4 @@
-use crate::error as batlerror;
+use crate::error::*;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use super::Name;
@@ -20,7 +20,7 @@ impl Archive {
 	/// Returns any errors that come up while getting the resource.
 	/// Also returns None if the resource does not exist
 	#[inline]
-	pub fn load(name: &Name) -> Result<Option<Self>, batlerror::GeneralResourceError> {
+	pub fn load(name: &Name) -> EyreResult<Option<Self>> {
 		let slashed_name = name.to_string().replace('.', "/");
 
 		let tar_path = crate::system::archive_root().map(|p| p

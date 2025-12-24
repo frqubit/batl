@@ -1,4 +1,4 @@
-use crate::error as batlerror;
+use crate::error::*;
 use semver::Version;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
@@ -59,9 +59,9 @@ impl Repository {
 	/// Propogates any errors found along the way
 	/// Returns `None` if no repository is found.
 	#[inline]
-	pub fn load(name: Name) -> Result<Option<Self>, batlerror::GeneralResourceError> {
+	pub fn load(name: Name) -> EyreResult<Option<Self>> {
 		let repo_path = crate::system::repository_root()
-			.map(|p| p.join(PathBuf::from(&name)));
+			.map(|p| p.join(name.path_segments_as_repository_name()));
 
 		if let Some(path) = repo_path {
 			let toml = AnyTomlConfig::read_toml(&path.join("batl.toml"))?;
@@ -84,13 +84,13 @@ impl Repository {
 	/// 
 	/// Propogates any errors found along the way
 	#[inline]
-	pub fn create(name: Name, options: CreateRepositoryOptions) -> Result<Self, batlerror::CreateResourceError> {
+	pub fn create(name: Name, options: CreateRepositoryOptions) -> EyreResult<Self> {
 		let repo_path = crate::system::repository_root()
-			.ok_or(batlerror::CreateResourceError::NotSetup)?
-			.join(PathBuf::from(&name));
+			.ok_or(err_battalion_not_setup())?
+			.join(name.path_segments_as_repository_name());
 
 		if repo_path.exists() {
-			return Err(batlerror::CreateResourceError::AlreadyExists);
+			return Err(err_resource_already_exists());
 		}
 
 		std::fs::create_dir_all(&repo_path)?;
@@ -154,12 +154,13 @@ impl Repository {
 	/// 
 	/// Propogates any errors found along the way
 	#[inline]
-	pub fn from_path(path: &Path) -> Result<Self, batlerror::GeneralResourceError> {
+	pub fn from_path(path: &Path) -> EyreResult<Self> {
+		let name = Name::from_absolute_path(path)?;
 		let toml = AnyTomlConfig::read_toml(&path.join("batl.toml"))?;
 		let latest = TomlConfigLatest::from(toml);
 
 		Ok(Self {
-			name: path.into(),
+			name,
 			path: path.to_path_buf(),
 			config: Config::from(latest)
 		})
@@ -173,7 +174,7 @@ impl Repository {
 	/// Propogates any errors found along the way
 	/// Returns `None` if no repository is found
 	#[inline]
-	pub fn locate_then_load(path: &Path) -> Result<Option<Self>, batlerror::GeneralResourceError> {
+	pub fn locate_then_load(path: &Path) -> EyreResult<Option<Self>> {
 		AnyTomlConfig::locate(path)
 			.and_then(|p| p.parent().map(Path::to_path_buf))
 			.map(|p| Self::from_path(&p))
@@ -200,7 +201,7 @@ impl Repository {
 	/// # Errors
 	/// Propogates any errors found along the way
 	#[inline]
-	pub fn destroy(self) -> Result<(), batlerror::DeleteResourceError> {
+	pub fn destroy(self) -> EyreResult<()> {
 		std::fs::remove_dir_all(self.path())?;
 
 		Ok(())
@@ -212,7 +213,7 @@ impl Repository {
 	/// 
 	/// Propogates any errors found along the way
 	#[inline]
-	pub fn archive_gen(&self) -> Result<Archive, batlerror::CreateDependentResourceError> {
+	pub fn archive_gen(&self) -> EyreResult<Archive> {
 		let mut walk_builder = ignore::WalkBuilder::new(self.path());
 
 		if let Some(git) = self.config().git.clone() {
@@ -224,7 +225,7 @@ impl Repository {
 		let walk = walk_builder.build();
 
 		let tar_path = crate::system::archive_root()
-			.ok_or(batlerror::CreateResourceError::NotSetup)?
+			.ok_or(err_battalion_not_setup())?
 			.join("repositories")
 			.join(format!("{}.tar", self.name.to_string().replace('.', "/")));
 
@@ -235,7 +236,7 @@ impl Repository {
 		let mut archive = tar::Builder::new(std::fs::File::create(&tar_path)?);
 
 		for result in walk {
-			let entry = result.map_err(|_err| batlerror::GeneralResourceError::Invalid)?;
+			let entry = result?;
 
 			let abs_path = entry.path();
 
@@ -263,19 +264,21 @@ impl Repository {
 	/// Returns `None` if it has not been generated
 	#[inline]
 	#[must_use]
-	pub fn archive(&self) -> Option<Archive> {
-		Archive::load(&self.name).ok().flatten()
+	pub fn archive(&self) -> EyreResult<Archive> {
+		self.archive_gen()
+
+		// Archive::load(&self.name)?.ok().flatten()
 	}
 
-	pub fn add_dependency(&mut self, name: Name) -> Result<&mut Repository, batlerror::GeneralResourceError> {
-		self.config.dependencies.insert(name, "latest".to_string());
+	pub fn add_dependency(&mut self, name: &Name) -> EyreResult<&mut Repository> {
+		self.config.dependencies.insert(name.clone(), "latest".to_string());
 		self.save()?;
 
 		Ok(self)
 	}
 
-	pub fn remove_dependency(&mut self, name: Name) -> Result<&mut Repository, batlerror::GeneralResourceError> {
-		self.config.dependencies.remove(&name);
+	pub fn remove_dependency(&mut self, name: &Name) -> EyreResult<&mut Repository> {
+		self.config.dependencies.remove(name);
 		self.save()?;
 
 		Ok(self)
@@ -311,7 +314,7 @@ pub enum AnyTomlConfig {
 #[expect(clippy::missing_trait_methods)]
 impl TomlConfig for AnyTomlConfig {
 	#[inline]
-	fn read_toml(path: &Path) -> Result<Self, batlerror::ReadConfigError> {
+	fn read_toml(path: &Path) -> EyreResult<Self> {
 		let config_str = std::fs::read_to_string(path)?;
 
 		if let Ok(v030) = toml::from_str(&config_str) {

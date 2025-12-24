@@ -1,9 +1,9 @@
-use core::convert::Infallible;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 use serde::ser::{self, Serialize};
 use std::path::{Path, PathBuf};
+use crate::error::*;
 
 pub mod archive;
 pub mod batlrc;
@@ -29,20 +29,71 @@ impl Name {
 		&self.0
 	}
 
-	/// Create a new battalion resource name
-	#[must_use]
-	pub const fn new(components: Vec<String>) -> Self {
-		Self(components)
+	pub fn new(val: &str) -> EyreResult<Name> {
+		let mut next = String::new();
+		let mut segments = vec![];
+
+		for c in val.chars() {
+			if next.is_empty() && c == '_' {
+				return Err(err_input_requested_is_invalid(val, "Name segment cannot start with an underscore"));
+			}
+
+			if c == '.' {
+				if next.is_empty() {
+					return Err(err_input_requested_is_invalid(val, "Name segment cannot end with a period"));
+				}
+
+				// Start a new segment
+				segments.push(next);
+				next = String::new();
+				continue;
+			}
+
+			// Add any valid characters to the segment
+			if c.is_alphanumeric() {
+				next.push(c);
+			}
+		}
+
+		// If segment is empty then either last c was
+		// a period or the input was empty
+		if next.is_empty() {
+			return Err(err_input_requested_is_invalid(val, "Name cannot end with a period or be empty"));
+		}
+
+		segments.push(next);
+
+		Ok(Name(segments))
 	}
-}
 
+	pub fn from_absolute_path(value: &Path) -> EyreResult<Self> {
+		if !value.is_absolute() {
+			return Err(err_input_requested_is_invalid(&value.to_string_lossy(), "Path to convert to a name must be absolute"));
+		}
 
-impl From<&Name> for PathBuf {
-	#[inline]
-	fn from(value: &Name) -> Self {
-		let parts = value.components();
+		let repository_root = crate::system::repository_root()
+			.ok_or(err_battalion_not_setup())?;
 
-		let mut path = Self::new();
+		if let Ok(subpath) = value.strip_prefix(repository_root) {
+			let segments = subpath.components()
+				.map(|v| v.as_os_str().to_string_lossy())
+				.map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
+				.collect();
+
+			Some(Name(segments));
+		}
+
+		Err(err_input_requested_is_invalid(&value.to_string_lossy(), "Path to convert to a name must be a child of the repository root"))
+	}
+
+	pub fn path_segments_as_folder_name(&self) -> PathBuf {
+		self.components().iter().map(|v| format!("_{v}")).collect()
+	}
+
+	pub fn path_segments_as_repository_name(&self) -> PathBuf {
+		let parts = self.components();
+
+		let mut path = PathBuf::new();
 
 		let mut parts_rev = parts.iter().rev();
 		let last = parts_rev.next();
@@ -57,49 +108,18 @@ impl From<&Name> for PathBuf {
 
 		path
 	}
-}
 
-impl From<&Path> for Name {
-	#[inline]
-	fn from(path: &Path) -> Self {
-		let mut value = path.iter();
-
-		let mut parts = vec![value.next().unwrap_or_default().to_string_lossy().to_string()];
-
-		for val in value {
-			let val_string = val.to_string_lossy().to_string();
-
-			if val_string.starts_with('_') {
-				parts.push(val_string.get(1..).unwrap_or_default().to_owned());
-			}
-		}
-
-		Self::new(parts)
+	pub fn url_path_segments(&self) -> String {
+		self.0.join("/")
 	}
 }
 
 impl FromStr for Name {
-	type Err = Infallible;
+	type Err = color_eyre::eyre::Error;
 
 	#[inline]
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Ok(Self::new(s.split('.').map(ToString::to_string).collect()))
-	}
-}
-
-#[expect(clippy::fallible_impl_from, reason = "FIX fromstr is infallible")]
-impl From<String> for Name {
-	#[inline]
-	fn from(value: String) -> Self {
-		Self::from_str(&value).unwrap()
-	}
-}
-
-#[expect(clippy::fallible_impl_from, reason = "FIX fromstr is infallible")]
-impl From<&str> for Name {
-	#[inline]
-	fn from(value: &str) -> Self {
-		Self::from_str(value).unwrap()
+		Self::new(s)
 	}
 }
 

@@ -1,7 +1,8 @@
 use batl_macros::versioned_identical;
 use serde::{Serialize, Deserialize};
+use crate::error::*;
 
-use crate::{error::ReadConfigError, system::batlrc_path, version::Version0_3_0};
+use crate::{system::batlrc_path, version::Version0_3_0};
 
 pub enum AnyBatlRc {
 	V0_3_0(BatlRc0_3_0),
@@ -10,7 +11,7 @@ pub enum AnyBatlRc {
 }
 
 impl AnyBatlRc {
-	pub fn read_toml() -> Result<Option<Self>, ReadConfigError> {
+	pub fn read_toml() -> EyreResult<Option<Self>> {
 		if let Some(batlrc_path) = batlrc_path() {
 			let config_str = std::fs::read_to_string(batlrc_path)?;
 

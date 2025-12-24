@@ -1,11 +1,10 @@
-use batl::resource::{Repository, repository};
+use batl::resource::{Name, Repository};
 use batl::resource::repository::CreateRepositoryOptions;
-use batl::resource::tomlconfig::{TomlConfig, RepositoryGit0_2_2};
+use batl::resource::tomlconfig::RepositoryGit0_2_2;
 use clap::Subcommand;
 use console::Term;
 use crate::output::*;
-use crate::utils::{UtilityError, BATL_NAME_REGEX};
-use envfile::EnvFile;
+use crate::error::*;
 use git2::{FetchOptions, RemoteCallbacks, Progress};
 use git2::build::RepoBuilder;
 use std::env::current_dir;
@@ -29,11 +28,11 @@ pub enum Commands {
 		name: String
 	},
 	Scaffold,
-	Env {
-		#[arg(short = 'n')]
-		name: Option<String>,
-		var: String
-	},
+	// Env {
+	// 	#[arg(short = 'n')]
+	// 	name: Option<String>,
+	// 	var: String
+	// },
 	Archive {
 		name: String
 	},
@@ -53,7 +52,7 @@ pub enum Commands {
 	}
 }
 
-pub fn run(cmd: Commands) -> Result<(), UtilityError> {
+pub fn run(cmd: Commands) -> EyreResult<()> {
 	match cmd {
 		Commands::Ls { filter } => {
 			super::cmd_ls(filter)
@@ -70,9 +69,9 @@ pub fn run(cmd: Commands) -> Result<(), UtilityError> {
 		Commands::Scaffold => {
 			cmd_scaffold()
 		},
-		Commands::Env { name, var } => {
-			cmd_env(name, var)
-		},
+		// Commands::Env { name, var } => {
+		// 	cmd_env(name, var)
+		// },
 		Commands::Archive { name } => {
 			cmd_archive(name)
 		},
@@ -91,10 +90,8 @@ pub fn run(cmd: Commands) -> Result<(), UtilityError> {
 	}
 }
 
-fn cmd_clone(url: String, name: String) -> Result<(), UtilityError> {
-	if !BATL_NAME_REGEX.is_match(&name) {
-		return Err(UtilityError::InvalidName(name));
-	}
+fn cmd_clone(url: String, name: String) -> EyreResult<()> {
+	let name = Name::new(&name)?;
 
 	Repository::create(
 		name.into(),
@@ -109,9 +106,9 @@ fn cmd_clone(url: String, name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-fn cmd_scaffold() -> Result<(), UtilityError> {
+fn cmd_scaffold() -> EyreResult<()> {
 	let repository = Repository::locate_then_load(&current_dir()?)?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
+		.ok_or(err_not_executed_inside_repository())?;
 
 	let config = repository.config();
 
@@ -124,17 +121,9 @@ fn cmd_scaffold() -> Result<(), UtilityError> {
 		let mut fetch_options = FetchOptions::new();
 		fetch_options.remote_callbacks(fetch_callbacks);
 
-		let result = RepoBuilder::new()
+		RepoBuilder::new()
 			.fetch_options(fetch_options)
-			.clone(&git.url, &git_path);
-
-		println!();
-
-		if let Err(err) = result {
-			println!("{err}");
-
-			return Err(UtilityError::ResourceNotCollected("Git remote".to_string()));
-		}
+			.clone(&git.url, &git_path)?;
 
 		success("Successfully scaffolded repository");
 	}
@@ -156,27 +145,27 @@ fn transfer_progress(progress: Progress<'_>) -> bool {
 	true
 }
 
-fn cmd_env(name: Option<String>, var: String) -> Result<(), UtilityError> {
-	let mut workspace_dir = repository::TomlConfigLatest::locate(&current_dir()?)
-		.ok_or(UtilityError::ResourceDoesNotExist("Workspace Configuration".to_string()))?;
+// fn cmd_env(name: Option<String>, var: String) -> Result<(), UtilityError> {
+// 	let mut workspace_dir = repository::TomlConfigLatest::locate(&current_dir()?)
+// 		.ok_or(UtilityError::ResourceDoesNotExist("Workspace Configuration".to_string()))?;
 
-	if let Some(name) = &name {
-		workspace_dir.push(name);
-	}
+// 	if let Some(name) = &name {
+// 		workspace_dir.push(name);
+// 	}
 
-	let env_file = EnvFile::new(workspace_dir.join("batl.env"))
-		.map_err(|_| UtilityError::ResourceDoesNotExist("Environment variables".to_string()))?;
+// 	let env_file = EnvFile::new(workspace_dir.join("batl.env"))
+// 		.map_err(|_| UtilityError::ResourceDoesNotExist("Environment variables".to_string()))?;
 
-	if let Some(val) = env_file.get(&var) {
-		println!("{val}");
-	}
+// 	if let Some(val) = env_file.get(&var) {
+// 		println!("{val}");
+// 	}
 
-	Ok(())
-}
+// 	Ok(())
+// }
 
-fn cmd_archive(name: String) -> Result<(), UtilityError> {
-	let repository = Repository::load(name.as_str().into())?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".into()))?;
+fn cmd_archive(name: String) -> EyreResult<()> {
+	let repository = Repository::load(Name::new(&name)?)?
+		.ok_or(err_resource_does_not_exist(&name))?;
 
 	repository.archive_gen()?;
 

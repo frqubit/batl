@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand, Args};
-
-use crate::utils::UtilityError;
+use color_eyre::{Result as EyreResult, eyre::eyre};
 
 mod commands;
+mod error;
 mod output;
 mod utils;
 
@@ -107,9 +107,9 @@ fn main() {
 	}
 }
 
-fn cmd_execshorthand(args: Vec<String>) -> Result<(), UtilityError> {
+fn cmd_execshorthand(args: Vec<String>) -> EyreResult<()> {
 	let mut args = args.into_iter();
-	let resource = args.next().ok_or(UtilityError::ResourceDoesNotExist("Resource name".into()))?;
+	let resource = args.next().ok_or(eyre!("Shorthand exec requires resource argument"))?;
 
 	if let Some((name, cmd)) = resource.split_once(':') {
 		commands::cmd_exec(

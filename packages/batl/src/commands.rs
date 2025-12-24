@@ -1,25 +1,24 @@
+use batl::error::*;
 use batl::resource::{Name, Repository};
 use batl::resource::batlrc::AnyBatlRc;
 use batl::resource::{BatlRc, batlrc::BatlRcLatest};
 use batl::resource::tomlconfig::{write_toml};
+use crate::error::{err_resource_does_not_exist, err_script_execution_failed};
 use crate::output::{error, info, success};
-use crate::utils::{BATL_NAME_REGEX, UtilityError, REGISTRY_DOMAIN};
+use crate::utils::{BATL_NAME_REGEX, REGISTRY_DOMAIN};
 use std::env::current_dir;
 use std::path::PathBuf;
 use colored::*;
 
 pub mod repository;
 
-pub fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
+pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
 	let repo_root = batl::system::repository_root()
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?;
+		.ok_or(err_battalion_not_setup())?;
 
 	let filter_path = filter.map(|v| {
-		let name = Name::from(v);
-		name.components().clone()
-	}).unwrap_or_default().into_iter()
-		.map(|v| format!("_{v}"))
-		.collect::<PathBuf>();
+		Name::new(&v).map(|v| Name::path_segments_as_folder_name(&v))
+	}).transpose()?.unwrap_or_default();
 
 	let search_path = repo_root.join(filter_path);
 
@@ -79,25 +78,19 @@ pub fn cmd_ls(filter: Option<String>) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_init(name: String) -> Result<(), UtilityError> {
-	if !BATL_NAME_REGEX.is_match(&name) {
-		return Err(UtilityError::InvalidName(name));
-	}
+pub fn cmd_init(name: String) -> EyreResult<()> {
+	let name = Name::new(&name)?;
 
-	Repository::create(name.into(), Default::default())?;
+	Repository::create(name, Default::default())?;
 
 	success("Initialized repository successfully");
 
 	Ok(())
 }
 
-pub fn cmd_delete(name: String) -> Result<(), UtilityError> {
-	if !BATL_NAME_REGEX.is_match(&name) {
-		return Err(UtilityError::InvalidName(name));
-	}
-
-	Repository::load(name.into())?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?
+pub fn cmd_delete(name: String) -> EyreResult<()> {
+	Repository::load(Name::new(&name)?)?
+		.ok_or(err_resource_does_not_exist(&name))?
 		.destroy()?;
 
 	success("Deleted repository successfully");
@@ -105,7 +98,9 @@ pub fn cmd_delete(name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_search(name: Option<String>) -> Result<(), UtilityError> {
+pub fn cmd_search(name: Option<String>) -> EyreResult<()> {
+	let name = name.map(|v| Name::new(&v)).transpose()?;
+
 	let name_query = name.map(|v| format!("?q={v}")).unwrap_or("".into());
 	let url = format!("{REGISTRY_DOMAIN}/pkg{name_query}");
 
@@ -127,19 +122,19 @@ pub fn cmd_search(name: Option<String>) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
+pub fn cmd_publish(name: String) -> EyreResult<()> {
 	let batlrc: BatlRc = batl::system::batlrc()?
-		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?
+		.ok_or(err_battalion_not_setup())?
 		.into();
 
-	let repository = Repository::load(name.as_str().into())?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".into()))?;
+	let repository = Repository::load(Name::new(&name)?)?
+		.ok_or(err_resource_does_not_exist(&name))?;
 
 	// let archive = repository.archive_gen()?;
-	let archive = repository.archive()
-		.ok_or(UtilityError::ResourceDoesNotExist("Archive".into()))?;
 
-	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", &repository.name().to_string().replace('.', "/"));
+	let archive = repository.archive()?;
+
+	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", &repository.name().url_path_segments());
 
 	let resp = ureq::post(&url)
 		.header("x-api-key", &batlrc.api.credentials)
@@ -154,8 +149,10 @@ pub fn cmd_publish(name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
-	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.to_string().replace('.', "/"));
+pub fn cmd_fetch(name: String) -> EyreResult<()> {
+	let name = Name::new(&name)?;
+
+	let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.url_path_segments());
 
 	let resp = ureq::get(&url)
 		.call()?;
@@ -172,8 +169,8 @@ pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
 	let mut tar = tar::Archive::new(body);
 
 	let repository_path = batl::system::repository_root()
-		.ok_or(UtilityError::ResourceDoesNotExist("Battalion setup".to_string()))?
-		.join(PathBuf::from(&Name::from(name.as_str())));
+		.ok_or(err_battalion_not_setup())?
+		.join(name.path_segments_as_repository_name());
 
 	std::fs::create_dir_all(&repository_path)?;
 
@@ -184,63 +181,66 @@ pub fn cmd_fetch(name: String) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Result<(), UtilityError> {
+pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> EyreResult<()> {
 	let repository = match &name {
-		Some(val) => {
-			Repository::load(val.as_str().into())?
-		},
+		Some(val) => Repository::load(Name::new(val)?)?,
 		None => Repository::locate_then_load(&current_dir()?)?
-	}.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
+	};
 
-	let command = repository.script(&script)
-		.ok_or(UtilityError::ScriptNotFound(script))?;
+	if let Some(repository) = repository {
+		let command = repository.script(&script)
+			.ok_or(err_script_does_not_exist(&script))?;
 
-	info(&format!("Running script{}", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
+		info(&format!("Running script{}", name.map(|s| format!(" for link {s}")).unwrap_or("".to_string())));
 
-	let batl_pwd = current_dir()?;
+		let batl_pwd = current_dir()?;
 
-	let status = std::process::Command::new("sh")
-		.current_dir(repository.path())
-		.env("BATL_PWD", batl_pwd.as_os_str())
-		.arg("-c")
-		.arg(command)
-		.arg("batl-executor")
-		.args(args)
-		.status()?;
+		let status = std::process::Command::new("sh")
+			.current_dir(repository.path())
+			.env("BATL_PWD", batl_pwd.as_os_str())
+			.arg("-c")
+			.arg(command)
+			.arg("batl-executor")
+			.args(args)
+			.status()?;
 
 
-	if !status.success() {
-		return Err(UtilityError::ScriptError(format!("Exit code {}", status.code().unwrap_or(0))))
+		if !status.success() {
+			return Err(err_script_execution_failed(&script, status.code().unwrap_or(0)))
+		}
+
+		success("Script completed successfully");
+
+		Ok(())
+	} else {
+		Err(match &name {
+			Some(v) => err_resource_does_not_exist(v),
+			None => err_not_executed_inside_repository()
+		})
 	}
+}
 
-	success("Script completed successfully");
+pub fn cmd_which(name: String) -> EyreResult<()> {
+	let repository = Repository::load(Name::new(&name)?)?
+		.ok_or(err_resource_does_not_exist(&name))?;
+
+	println!("{}", repository.path().to_string_lossy());
 
 	Ok(())
 }
 
-pub fn cmd_which(name: String) -> Result<(), UtilityError> {
-	if !BATL_NAME_REGEX.is_match(&name) {
-		return Err(UtilityError::InvalidName(name));
-	}
-
-	let workspace = Repository::load(name.into())?
-		.ok_or(UtilityError::ResourceDoesNotExist("Workspace".into()))?;
-
-	println!("{}", workspace.path().to_string_lossy());
-
-	Ok(())
-}
-
-pub fn cmd_setup() -> Result<(), UtilityError> {
+pub fn cmd_setup() -> EyreResult<()> {
 	#[cfg(target_os = "windows")]
 	crate::utils::windows_symlink_perms()?;
 
 	if batl::system::batl_root().is_some() {
-		return Err(UtilityError::AlreadySetup);
+		// If installed already then just update instead
+		cmd_upgrade();
+		return Ok(());
 	}
 
 	let batl_root = dirs::home_dir()
-		.ok_or(UtilityError::ResourceDoesNotExist("Home directory".to_string()))?
+		.ok_or(err_missing_system_ability("system user directory"))?
 		.join("battalion");
 
 	std::fs::create_dir_all(batl_root.join("repositories"))?;
@@ -254,29 +254,33 @@ pub fn cmd_setup() -> Result<(), UtilityError> {
 	Ok(())  
 }
 
-pub fn cmd_add(name: String) -> Result<(), UtilityError> {
-	let mut repository = Repository::locate_then_load(&current_dir()?)?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
+pub fn cmd_add(name: String) -> EyreResult<()> {
+	let name = Name::new(&name)?;
 
-	repository.add_dependency(name.as_str().into())?;
+	let mut repository = Repository::locate_then_load(&current_dir()?)?
+		.ok_or(err_not_executed_inside_repository())?;
+
+	repository.add_dependency(&name)?;
 
 	success(&format!("Added dependency {name}"));
 
 	Ok(())
 }
 
-pub fn cmd_remove(name: String) -> Result<(), UtilityError> {
-	let mut repository = Repository::locate_then_load(&current_dir()?)?
-		.ok_or(UtilityError::ResourceDoesNotExist("Repository".to_string()))?;
+pub fn cmd_remove(name: String) -> EyreResult<()> {
+	let name = Name::new(&name)?;
 
-	repository.remove_dependency(name.as_str().into())?;
+	let mut repository = Repository::locate_then_load(&current_dir()?)?
+		.ok_or(err_not_executed_inside_repository())?;
+
+	repository.remove_dependency(&name)?;
 
 	success(&format!("Removed dependency {name}"));
 
 	Ok(())
 }
 
-fn migrate_at_to_underscore(path: &PathBuf) -> Result<(), UtilityError> {
+fn migrate_at_to_underscore(path: &PathBuf) -> EyreResult<()> {
 	let mut to_search: Vec<PathBuf> = std::fs::read_dir(path)?
 		.filter_map(|entry| {
 			Some(entry.ok()?.path())
@@ -312,9 +316,9 @@ fn migrate_at_to_underscore(path: &PathBuf) -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_upgrade() -> Result<(), UtilityError> {
+pub fn cmd_upgrade() -> EyreResult<()> {
 	let batl_root = batl::system::batl_root()
-		.ok_or(UtilityError::ResourceDoesNotExist("Battalion root".to_string()))?;
+		.ok_or(err_battalion_not_setup())?;
 
 	if !batl_root.join("gen").exists() {
 		let gen_ = batl_root.join("gen");
@@ -329,7 +333,7 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 	if batl::system::batlrc()?.is_none() {
 		// migrate @ to _
 		migrate_at_to_underscore(&batl::system::repository_root()
-			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
+			.ok_or(err_internal_structure_malformed("missing repository root yet battalion root exists"))?)?;
 
 		let batlrc = BatlRc::default();
 	
@@ -341,7 +345,7 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 	if let Some(AnyBatlRc::V0_2_1(v021)) = batl::system::batlrc()? {
 		// migrate @ to _
 		migrate_at_to_underscore(&batl::system::repository_root()
-			.ok_or(UtilityError::ResourceDoesNotExist("Repository root".to_string()))?)?;
+			.ok_or(err_internal_structure_malformed("missing repository root yet battalion root exists"))?)?;
 
 		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &BatlRcLatest::from(v021))?;
 
@@ -351,13 +355,13 @@ pub fn cmd_upgrade() -> Result<(), UtilityError> {
 	Ok(())
 }
 
-pub fn cmd_auth() -> Result<(), UtilityError> {
+pub fn cmd_auth() -> EyreResult<()> {
 	let key_prompt = dialoguer::Input::new();
 
 	let api_key: String = key_prompt.with_prompt("API key").interact_text()?;
 
 	let mut batlrc: BatlRc = batl::system::batlrc()?
-		.ok_or(UtilityError::ResourceDoesNotExist("BatlRc".to_string()))?
+		.ok_or(err_battalion_not_setup())?
 		.into();
 
 	batlrc.api.credentials = api_key;

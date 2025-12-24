@@ -15,6 +15,7 @@ categories = ["command-line-utilities", "development-tools", "filesystem"]
 [dependencies]
 batl-macros = { version = "0.3.0", path = "../batl-macros" }
 clap = { version = "4.5.53", features = ["derive"] }
+color-eyre = "0.6.5"
 colored = "3.0.0"
 console = "0.16.2"
 dialoguer = "0.12.0"
