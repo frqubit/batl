@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::EyreResult;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use super::Name;

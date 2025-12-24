@@ -3,7 +3,7 @@ use core::str::FromStr;
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 use serde::ser::{self, Serialize};
 use std::path::{Path, PathBuf};
-use crate::error::*;
+use crate::error::{EyreResult, err_input_requested_is_invalid, err_battalion_not_setup};
 
 pub mod archive;
 pub mod batlrc;
@@ -29,7 +29,7 @@ impl Name {
 		&self.0
 	}
 
-	pub fn new(val: &str) -> EyreResult<Name> {
+	pub fn new(val: &str) -> EyreResult<Self> {
 		let mut next = String::new();
 		let mut segments = vec![];
 
@@ -63,7 +63,7 @@ impl Name {
 
 		segments.push(next);
 
-		Ok(Name(segments))
+		Ok(Self(segments))
 	}
 
 	pub fn from_absolute_path(value: &Path) -> EyreResult<Self> {
@@ -80,17 +80,17 @@ impl Name {
 				.map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
 				.collect();
 
-			Some(Name(segments));
+			Self(segments);
 		}
 
 		Err(err_input_requested_is_invalid(&value.to_string_lossy(), "Path to convert to a name must be a child of the repository root"))
 	}
 
-	pub fn path_segments_as_folder_name(&self) -> PathBuf {
+	#[must_use] pub fn path_segments_as_folder_name(&self) -> PathBuf {
 		self.components().iter().map(|v| format!("_{v}")).collect()
 	}
 
-	pub fn path_segments_as_repository_name(&self) -> PathBuf {
+	#[must_use] pub fn path_segments_as_repository_name(&self) -> PathBuf {
 		let parts = self.components();
 
 		let mut path = PathBuf::new();
@@ -109,7 +109,7 @@ impl Name {
 		path
 	}
 
-	pub fn url_path_segments(&self) -> String {
+	#[must_use] pub fn url_path_segments(&self) -> String {
 		self.0.join("/")
 	}
 }

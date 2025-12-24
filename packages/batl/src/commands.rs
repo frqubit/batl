@@ -1,11 +1,11 @@
-use batl::error::*;
-use batl::resource::{Name, Repository};
-use batl::resource::batlrc::AnyBatlRc;
-use batl::resource::{BatlRc, batlrc::BatlRcLatest};
-use batl::resource::tomlconfig::{write_toml};
+use crate::error::*;
+use crate::resource::{Name, Repository};
+use crate::resource::batlrc::AnyBatlRc;
+use crate::resource::{BatlRc, batlrc::BatlRcLatest};
+use crate::resource::tomlconfig::{write_toml};
 use crate::error::{err_resource_does_not_exist, err_script_execution_failed};
 use crate::output::{error, info, success};
-use crate::utils::{BATL_NAME_REGEX, REGISTRY_DOMAIN};
+use crate::utils::REGISTRY_DOMAIN;
 use std::env::current_dir;
 use std::path::PathBuf;
 use colored::*;
@@ -13,7 +13,7 @@ use colored::*;
 pub mod repository;
 
 pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
-	let repo_root = batl::system::repository_root()
+	let repo_root = crate::system::repository_root()
 		.ok_or(err_battalion_not_setup())?;
 
 	let filter_path = filter.map(|v| {
@@ -123,7 +123,7 @@ pub fn cmd_search(name: Option<String>) -> EyreResult<()> {
 }
 
 pub fn cmd_publish(name: String) -> EyreResult<()> {
-	let batlrc: BatlRc = batl::system::batlrc()?
+	let batlrc: BatlRc = crate::system::batlrc()?
 		.ok_or(err_battalion_not_setup())?
 		.into();
 
@@ -168,7 +168,7 @@ pub fn cmd_fetch(name: String) -> EyreResult<()> {
 
 	let mut tar = tar::Archive::new(body);
 
-	let repository_path = batl::system::repository_root()
+	let repository_path = crate::system::repository_root()
 		.ok_or(err_battalion_not_setup())?
 		.join(name.path_segments_as_repository_name());
 
@@ -233,7 +233,7 @@ pub fn cmd_setup() -> EyreResult<()> {
 	#[cfg(target_os = "windows")]
 	crate::utils::windows_symlink_perms()?;
 
-	if batl::system::batl_root().is_some() {
+	if crate::system::batl_root().is_some() {
 		// If installed already then just update instead
 		cmd_upgrade();
 		return Ok(());
@@ -317,7 +317,7 @@ fn migrate_at_to_underscore(path: &PathBuf) -> EyreResult<()> {
 }
 
 pub fn cmd_upgrade() -> EyreResult<()> {
-	let batl_root = batl::system::batl_root()
+	let batl_root = crate::system::batl_root()
 		.ok_or(err_battalion_not_setup())?;
 
 	if !batl_root.join("gen").exists() {
@@ -330,24 +330,24 @@ pub fn cmd_upgrade() -> EyreResult<()> {
 		success("Added gen folder");
 	}
 
-	if batl::system::batlrc()?.is_none() {
+	if crate::system::batlrc()?.is_none() {
 		// migrate @ to _
-		migrate_at_to_underscore(&batl::system::repository_root()
+		migrate_at_to_underscore(&crate::system::repository_root()
 			.ok_or(err_internal_structure_malformed("missing repository root yet battalion root exists"))?)?;
 
 		let batlrc = BatlRc::default();
 	
-		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &batlrc)?;
+		write_toml(&crate::system::batlrc_path().expect("Nonsensical already checked for root"), &batlrc)?;
 
 		success("Added batlrc toml");
 	}
 
-	if let Some(AnyBatlRc::V0_2_1(v021)) = batl::system::batlrc()? {
+	if let Some(AnyBatlRc::V0_2_1(v021)) = crate::system::batlrc()? {
 		// migrate @ to _
-		migrate_at_to_underscore(&batl::system::repository_root()
+		migrate_at_to_underscore(&crate::system::repository_root()
 			.ok_or(err_internal_structure_malformed("missing repository root yet battalion root exists"))?)?;
 
-		write_toml(&batl::system::batlrc_path().expect("Nonsensical already checked for root"), &BatlRcLatest::from(v021))?;
+		write_toml(&crate::system::batlrc_path().expect("Nonsensical already checked for root"), &BatlRcLatest::from(v021))?;
 
 		success("migrated batlrc to 0.3.0");
 	}
@@ -360,13 +360,13 @@ pub fn cmd_auth() -> EyreResult<()> {
 
 	let api_key: String = key_prompt.with_prompt("API key").interact_text()?;
 
-	let mut batlrc: BatlRc = batl::system::batlrc()?
+	let mut batlrc: BatlRc = crate::system::batlrc()?
 		.ok_or(err_battalion_not_setup())?
 		.into();
 
 	batlrc.api.credentials = api_key;
 
-	write_toml(&batl::system::batlrc_path().expect("Nonsensical just read batlrc"), &batlrc)?;
+	write_toml(&crate::system::batlrc_path().expect("Nonsensical just read batlrc"), &batlrc)?;
 
 	success("Added new API key");
 

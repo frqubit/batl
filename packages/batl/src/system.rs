@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::EyreResult;
 use crate::resource::batlrc::{AnyBatlRc};
 use std::env::var as env_var;
 use std::path::PathBuf;

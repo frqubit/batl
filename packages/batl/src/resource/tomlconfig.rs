@@ -2,7 +2,7 @@
 #![allow(clippy::exhaustive_enums)]
 
 use batl_macros::{environment_struct_impl, versioned_identical};
-use crate::error::*;
+use crate::error::EyreResult;
 use crate::resource::Name;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;

@@ -1,6 +1,6 @@
 use batl_macros::versioned_identical;
 use serde::{Serialize, Deserialize};
-use crate::error::*;
+use crate::error::EyreResult;
 
 use crate::{system::batlrc_path, version::Version0_3_0};
 

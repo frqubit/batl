@@ -1,4 +1,4 @@
-use crate::error::*;
+use crate::error::{EyreResult, err_battalion_not_setup, err_resource_already_exists};
 use semver::Version;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
@@ -270,14 +270,14 @@ impl Repository {
 		// Archive::load(&self.name)?.ok().flatten()
 	}
 
-	pub fn add_dependency(&mut self, name: &Name) -> EyreResult<&mut Repository> {
+	pub fn add_dependency(&mut self, name: &Name) -> EyreResult<&mut Self> {
 		self.config.dependencies.insert(name.clone(), "latest".to_string());
 		self.save()?;
 
 		Ok(self)
 	}
 
-	pub fn remove_dependency(&mut self, name: &Name) -> EyreResult<&mut Repository> {
+	pub fn remove_dependency(&mut self, name: &Name) -> EyreResult<&mut Self> {
 		self.config.dependencies.remove(name);
 		self.save()?;
 
@@ -348,7 +348,7 @@ impl From<AnyTomlConfig> for TomlConfigLatest {
 // CONFIG VERSIONS //
 pub type TomlConfigLatest = TomlConfig0_3_0;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct TomlConfig0_3_0 {
 	pub environment: tomlconfig::Environment0_3_0,
 	pub repository: tomlconfig::Repository0_3_0,

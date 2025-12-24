@@ -4,7 +4,10 @@ use color_eyre::{Result as EyreResult, eyre::eyre};
 mod commands;
 mod error;
 mod output;
+mod resource;
+mod system;
 mod utils;
+mod version;
 
 #[derive(Parser)]
 #[command(name = "batl")]

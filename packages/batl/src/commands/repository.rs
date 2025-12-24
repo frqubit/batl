@@ -1,6 +1,6 @@
-use batl::resource::{Name, Repository};
-use batl::resource::repository::CreateRepositoryOptions;
-use batl::resource::tomlconfig::RepositoryGit0_2_2;
+use crate::resource::{Name, Repository};
+use crate::resource::repository::CreateRepositoryOptions;
+use crate::resource::tomlconfig::RepositoryGit0_2_2;
 use clap::Subcommand;
 use console::Term;
 use crate::output::*;
@@ -94,7 +94,7 @@ fn cmd_clone(url: String, name: String) -> EyreResult<()> {
 	let name = Name::new(&name)?;
 
 	Repository::create(
-		name.into(),
+		name,
 		CreateRepositoryOptions::git(RepositoryGit0_2_2 {
 			url,
 			path: "git".to_string()
