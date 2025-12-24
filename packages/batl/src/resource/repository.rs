@@ -2,7 +2,9 @@ use super::archive::Archive;
 use super::restrict::{Condition, Settings as RestrictSettings};
 use super::tomlconfig::TomlConfig;
 use super::{tomlconfig, Name};
-use crate::error::{err_battalion_not_setup, err_resource_already_exists, EyreResult};
+use crate::error::{
+    err_battalion_not_setup, err_resource_already_exists, err_resource_does_not_exist, EyreResult,
+};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -272,10 +274,23 @@ impl Repository {
         // Archive::load(&self.name)?.ok().flatten()
     }
 
-    pub fn add_dependency(&mut self, name: &Name) -> EyreResult<&mut Self> {
+    pub fn add_dependency(
+        &mut self,
+        name: &Name,
+        version: Option<&Version>,
+    ) -> EyreResult<&mut Self> {
+        let version = match version {
+            Some(v) => v.clone(),
+            None => {
+                let repository = Repository::load(name.clone())?
+                    .ok_or(err_resource_does_not_exist(&name.to_string()))?;
+                repository.config().version.clone()
+            }
+        };
+
         self.config
             .dependencies
-            .insert(name.clone(), "latest".to_string());
+            .insert(name.clone(), version.to_string());
         self.save()?;
 
         Ok(self)

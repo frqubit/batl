@@ -91,7 +91,7 @@ impl Name {
                 .map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
                 .collect();
 
-            Self(segments);
+            return Ok(Self(segments));
         }
 
         Err(err_input_requested_is_invalid(
