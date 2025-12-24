@@ -4,39 +4,39 @@ use color_eyre::eyre::{eyre, Report};
 pub use color_eyre::Result as EyreResult;
 
 pub fn err_battalion_not_setup() -> Report {
-	eyre!("Battalion has not been set up, run `batl setup` to fix")
+    eyre!("Battalion has not been set up, run `batl setup` to fix")
 }
 
 pub fn err_not_executed_inside_repository() -> Report {
-	eyre!("This command must be executed while the current shell is in a repository")
+    eyre!("This command must be executed while the current shell is in a repository")
 }
 
 pub fn err_resource_does_not_exist(resource: &str) -> Report {
-	eyre!("{resource} does not exist yet operation was attempted")
+    eyre!("{resource} does not exist yet operation was attempted")
 }
 
 pub fn err_resource_already_exists() -> Report {
-	eyre!("This resource already exists!")
+    eyre!("This resource already exists!")
 }
 
 pub fn err_script_does_not_exist(script: &str) -> Report {
-	eyre!("A script named {script} does not exist in the repository")
+    eyre!("A script named {script} does not exist in the repository")
 }
 
 pub fn err_script_execution_failed(script: &str, exit_code: i32) -> Report {
-	eyre!("Script {script} failed with exit code {exit_code}")
+    eyre!("Script {script} failed with exit code {exit_code}")
 }
 
 pub fn err_input_requested_is_invalid(specifics: &str, reason: &str) -> Report {
-	eyre!("The input of {specifics} is invalid: {reason}")
+    eyre!("The input of {specifics} is invalid: {reason}")
 }
 
 pub fn err_missing_system_ability(ability: &str) -> Report {
-	eyre!("Battalion cannot find/utilize a(n) {ability} from the system or current user")
+    eyre!("Battalion cannot find/utilize a(n) {ability} from the system or current user")
 }
 
 pub fn err_internal_structure_malformed(specifics: &str) -> Report {
-	eyre!("The internal battalion folder structure is malformed: {specifics}")
+    eyre!("The internal battalion folder structure is malformed: {specifics}")
 }
 
 // #[derive(Debug, Error)]

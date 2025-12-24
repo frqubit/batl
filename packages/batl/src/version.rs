@@ -1,4 +1,7 @@
-#![allow(clippy::module_name_repetitions, reason = "version structs named version, fix in future")]
+#![allow(
+    clippy::module_name_repetitions,
+    reason = "version structs named version, fix in future"
+)]
 
 use batl_macros::semver_struct_impl;
 
