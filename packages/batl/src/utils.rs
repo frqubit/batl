@@ -1,14 +1,5 @@
-use lazy_static::lazy_static;
-use regex::Regex;
-
 #[cfg(target_os = "windows")]
 use crate::output::error;
-
-
-lazy_static! {
-	pub static ref BATL_NAME_REGEX: Regex = Regex::new(r"^[a-z][a-z0-9\-_]*(.[a-z][a-z0-9\-_]*)+$").unwrap();
-	pub static ref BATL_LINK_REGEX: Regex = Regex::new(r"^[a-zA-Z][a-zA-Z0-9_\-]*$").unwrap();
-}
 
 pub const REGISTRY_DOMAIN: &str = "https://api.batl.circetools.net";
 

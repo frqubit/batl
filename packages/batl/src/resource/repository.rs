@@ -263,7 +263,6 @@ impl Repository {
 	/// 
 	/// Returns `None` if it has not been generated
 	#[inline]
-	#[must_use]
 	pub fn archive(&self) -> EyreResult<Archive> {
 		self.archive_gen()
 

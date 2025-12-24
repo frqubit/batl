@@ -12,16 +12,15 @@ use std::path::{Path, PathBuf};
 versioned_identical!("0.3.0" => "latest" : [
 	Environment,
 	Repository,
-	Workspace,
 	Scripts,
 	Dependencies,
 	Restrict,
-	Restrictor
+	Restrictor,
+	Links
 ]);
 
 versioned_identical!("0.2.2" => "0.3.0" : [
 	Repository,
-	Workspace,
 	Scripts,
 	Dependencies,
 	Restrict,
@@ -39,12 +38,6 @@ pub struct Repository0_2_2 {
 	pub name: Name,
 	pub version: semver::Version,
 	pub git: Option<RepositoryGit0_2_2>
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct Workspace0_2_2 {
-	pub name: Name,
-	pub version: semver::Version
 }
 
 pub type Links0_2_2 = Links0_2_1;
@@ -76,7 +69,6 @@ pub enum RestrictRequirement0_2_2 {
 }
 
 pub type Repository0_2_1 = Repository0_2_0;
-pub type Workspace0_2_1 = Workspace0_2_0;
 pub type Links0_2_1 = Links0_2_0;
 pub type RepositoryGit0_2_1 = RepositoryGit0_2_0;
 pub type Scripts0_2_1 = Scripts0_2_0;
@@ -88,13 +80,6 @@ pub struct Repository0_2_0 {
 	pub version: semver::Version,
 	pub build: Option<String>,
 	pub git: Option<RepositoryGit0_2_0>
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct Workspace0_2_0 {
-	pub name: Name,
-	pub version: semver::Version,
-	pub build: Option<String>
 }
 
 pub type Links0_2_0 = HashMap<String, Name>;

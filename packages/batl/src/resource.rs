@@ -11,7 +11,6 @@ pub mod repository;
 pub mod restrict;
 pub mod tomlconfig;
 
-pub use self::archive::Archive;
 pub use self::batlrc::BatlRcLatest as BatlRc;
 pub use self::repository::Repository;
 

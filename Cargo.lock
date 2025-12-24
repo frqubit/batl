@@ -111,7 +111,6 @@ dependencies = [
  "flate2",
  "git2",
  "ignore",
- "lazy_static",
  "pathdiff",
  "rand",
  "regex",

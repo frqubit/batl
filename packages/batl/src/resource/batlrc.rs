@@ -39,7 +39,6 @@ impl From<AnyBatlRc> for BatlRcLatest {
 versioned_identical!("0.3.0" => "latest" : [BatlRc]);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-#[expect(clippy::exhaustive_structs)]
 pub struct BatlRc0_3_0 {
 	pub version: Version0_3_0,
 	pub api: Api0_2_1
@@ -48,7 +47,6 @@ pub struct BatlRc0_3_0 {
 versioned_identical!("0.2.1" => "0.2.2" : [BatlRc]);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-#[expect(clippy::exhaustive_structs)]
 pub struct BatlRc0_2_1 {
 	pub api: Api0_2_1
 }
@@ -63,7 +61,6 @@ impl From<BatlRc0_2_1> for BatlRcLatest {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-#[expect(clippy::exhaustive_structs)]
 pub struct Api0_2_1 {
 	pub credentials: String
 }

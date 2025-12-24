@@ -235,7 +235,7 @@ pub fn cmd_setup() -> EyreResult<()> {
 
 	if crate::system::batl_root().is_some() {
 		// If installed already then just update instead
-		cmd_upgrade();
+		cmd_upgrade()?;
 		return Ok(());
 	}
 
