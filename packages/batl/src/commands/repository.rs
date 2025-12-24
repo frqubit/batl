@@ -1,4 +1,4 @@
-use batl::resource::{Repository, Resource, repository};
+use batl::resource::{Repository, repository};
 use batl::resource::repository::CreateRepositoryOptions;
 use batl::resource::tomlconfig::{TomlConfig, RepositoryGit0_2_2};
 use clap::Subcommand;

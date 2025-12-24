@@ -3,7 +3,7 @@ use semver::Version;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use super::{tomlconfig, Name, Resource};
+use super::{tomlconfig, Name};
 use super::archive::Archive;
 use super::restrict::{Condition, Settings as RestrictSettings};
 use super::tomlconfig::TomlConfig;
@@ -37,6 +37,21 @@ impl CreateRepositoryOptions {
 }
 
 impl Repository {
+	#[must_use]
+	pub const fn config(&self) -> &Config {
+		&self.config
+	}
+
+	#[must_use]
+	pub const fn name(&self) -> &Name {
+		&self.name
+	}
+
+	#[must_use]
+	pub fn path(&self) -> &Path {
+		&self.path
+	}
+
 	/// Loads the repository at the given name
 	/// 
 	/// # Errors
@@ -264,25 +279,6 @@ impl Repository {
 		self.save()?;
 
 		Ok(self)
-	}
-}
-
-impl Resource for Repository {
-	type Config = Config;
-
-	#[inline]
-	fn path(&self) -> &Path {
-		&self.path
-	}
-
-	#[inline]
-	fn name(&self) -> &Name {
-		&self.name
-	}
-
-	#[inline]
-	fn config(&self) -> &Config {
-		&self.config
 	}
 }
 

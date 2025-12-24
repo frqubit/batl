@@ -1,10 +1,9 @@
-use batl::resource::{Name, Repository, Resource};
+use batl::resource::{Name, Repository};
 use batl::resource::batlrc::AnyBatlRc;
-use batl::resource::{self as batlres, BatlRc, batlrc::BatlRcLatest};
-use batl::resource::tomlconfig::{TomlConfig, write_toml};
+use batl::resource::{BatlRc, batlrc::BatlRcLatest};
+use batl::resource::tomlconfig::{write_toml};
 use crate::output::{error, info, success};
 use crate::utils::{BATL_NAME_REGEX, UtilityError, REGISTRY_DOMAIN};
-use std::collections::HashMap;
 use std::env::current_dir;
 use std::path::PathBuf;
 use colored::*;

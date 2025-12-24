@@ -15,15 +15,6 @@ pub use self::archive::Archive;
 pub use self::batlrc::BatlRcLatest as BatlRc;
 pub use self::repository::Repository;
 
-
-pub trait Resource {
-	type Config;
-
-	fn config(&self) -> &Self::Config;
-	fn name(&self) -> &Name;
-	fn path(&self) -> &Path;
-}
-
 /// A Battalion resource name
 /// 
 /// These are used for repositories, workspaces, and
