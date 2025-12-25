@@ -39,6 +39,10 @@ pub fn err_internal_structure_malformed(specifics: &str) -> Report {
     eyre!("The internal battalion folder structure is malformed: {specifics}")
 }
 
+pub fn err_resource_does_not_have_thing(resource: &str, thing: &str) -> Report {
+    eyre!("The resource {resource} doesn't have {thing}")
+}
+
 // #[derive(Debug, Error)]
 // #[non_exhaustive]
 // pub enum ReadConfigError {

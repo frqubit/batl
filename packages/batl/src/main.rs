@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand};
 use color_eyre::{eyre::eyre, Result as EyreResult};
 
@@ -54,6 +56,8 @@ enum SubCommand {
     Auth,
     #[command(about = "Search registry for repositories")]
     Search { name: Option<String> },
+    #[command(about = "Links a dependency to a folder")]
+    Link { name: String, path: PathBuf },
     #[command(external_subcommand)]
     ExecShorthand(Vec<String>),
 }
@@ -82,6 +86,7 @@ fn main() {
         SubCommand::Exec { name, script, args } => commands::cmd_exec(name, script, args),
         SubCommand::Which { name } => commands::cmd_which(name),
         SubCommand::Search { name } => commands::cmd_search(name),
+        SubCommand::Link { name, path } => commands::cmd_link(name, path),
         SubCommand::ExecShorthand(args) => cmd_execshorthand(args),
     };
 

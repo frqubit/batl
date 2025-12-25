@@ -1,13 +1,15 @@
 use super::archive::Archive;
 use super::restrict::{Condition, Settings as RestrictSettings};
 use super::tomlconfig::TomlConfig;
-use super::{tomlconfig, Name};
+use super::{symlink_dir, tomlconfig, Name};
 use crate::error::{
-    err_battalion_not_setup, err_resource_already_exists, err_resource_does_not_exist, EyreResult,
+    err_battalion_not_setup, err_resource_already_exists, err_resource_does_not_exist,
+    err_resource_does_not_have_thing, EyreResult,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 pub struct Repository {
@@ -125,6 +127,7 @@ impl Repository {
             },
             scripts: Some(scripts),
             dependencies: None,
+            links: None,
             restrict: Some(restrictions),
         };
 
@@ -302,6 +305,64 @@ impl Repository {
 
         Ok(self)
     }
+
+    pub fn add_link(&mut self, repository: &Repository, path: PathBuf) -> EyreResult<&mut Self> {
+        let name = repository.name().clone();
+
+        if path.exists() {
+            return Err(err_resource_already_exists());
+        }
+
+        if !self.config.dependencies.contains_key(&name) {
+            return Err(err_resource_does_not_have_thing(
+                "repository",
+                &name.to_string(),
+            ));
+        }
+
+        self.add_path_to_gitignore_file(&path)?;
+
+        symlink_dir(repository.path(), &path)?;
+        self.config.links.insert(name, path);
+
+        self.save()?;
+
+        Ok(self)
+    }
+
+    fn add_path_to_gitignore_file(&self, path: &Path) -> EyreResult<()> {
+        let gitignore_path = self.path.join(".gitignore");
+        let gitignore_content = match gitignore_path.exists() {
+            false => String::new(),
+            true => {
+                let mut file = std::fs::File::open(&gitignore_path)?;
+                let mut out = String::new();
+                file.read_to_string(&mut out)?;
+                out
+            }
+        };
+
+        let mut gitignore_lines: Vec<String> =
+            gitignore_content.split('\n').map(String::from).collect();
+        let gitignore_batl_line = gitignore_lines
+            .iter()
+            .position(|v| *v == "# batl.gitignore begin DO NOT MODIFY");
+
+        if let Some(gitignore_batlpos) = gitignore_batl_line {
+            // Battalion is already in gitignore
+            gitignore_lines.insert(gitignore_batlpos + 1, path.to_string_lossy().into());
+        } else {
+            gitignore_lines.push("# batl.gitignore begin DO NOT MODIFY".into());
+            gitignore_lines.push(path.to_string_lossy().into());
+            gitignore_lines.push("# batl.gitignore end DO NOT MODIFY".into());
+        }
+
+        let output = gitignore_lines.join("\n").into_bytes();
+        let mut out_file = std::fs::File::create(gitignore_path)?;
+        out_file.write(&output)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -312,6 +373,7 @@ pub struct Config {
     pub git: Option<GitConfig>,
     pub scripts: HashMap<String, String>,
     pub dependencies: HashMap<Name, String>,
+    pub links: HashMap<Name, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
 }
 
@@ -373,6 +435,7 @@ pub struct TomlConfig0_3_0 {
     pub repository: tomlconfig::Repository0_3_0,
     pub scripts: Option<tomlconfig::Scripts0_3_0>,
     pub dependencies: Option<tomlconfig::Dependencies0_3_0>,
+    pub links: Option<tomlconfig::Links0_3_0>,
     pub restrict: Option<tomlconfig::Restrict0_3_0>,
 }
 
@@ -394,6 +457,7 @@ impl From<TomlConfig0_2_2> for TomlConfigLatest {
             repository: value.repository,
             scripts: value.scripts,
             dependencies: value.dependencies,
+            links: None,
             restrict: value.restrict,
         }
     }
@@ -420,6 +484,7 @@ impl From<TomlConfig0_2_1> for TomlConfigLatest {
             },
             scripts: value.scripts,
             dependencies: value.dependencies,
+            links: None,
             restrict: None,
         }
     }
@@ -446,6 +511,7 @@ impl From<TomlConfig0_2_0> for TomlConfigLatest {
             },
             scripts: value.scripts,
             dependencies: value.dependencies,
+            links: None,
             restrict: None,
         }
     }
@@ -472,6 +538,7 @@ impl From<TomlConfigLatest> for Config {
             git,
             scripts: value.scripts.unwrap_or_default(),
             dependencies: value.dependencies.unwrap_or_default(),
+            links: value.links.unwrap_or_default(),
             restrict,
         }
     }
@@ -500,6 +567,7 @@ impl From<Config> for TomlConfigLatest {
             },
             scripts: tomlconfig::hashmap_to_option_hashmap(value.scripts),
             dependencies: tomlconfig::hashmap_to_option_hashmap(value.dependencies),
+            links: tomlconfig::hashmap_to_option_hashmap(value.links),
             restrict: tomlconfig::hashmap_to_option_hashmap(restrict),
         }
     }

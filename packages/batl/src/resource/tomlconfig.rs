@@ -82,7 +82,7 @@ pub struct Repository0_2_0 {
     pub git: Option<RepositoryGit0_2_0>,
 }
 
-pub type Links0_2_0 = HashMap<String, Name>;
+pub type Links0_2_0 = HashMap<Name, PathBuf>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct RepositoryGit0_2_0 {

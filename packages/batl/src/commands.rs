@@ -387,3 +387,15 @@ pub fn cmd_auth() -> EyreResult<()> {
 
     Ok(())
 }
+
+pub fn cmd_link(name: String, path: PathBuf) -> EyreResult<()> {
+    let mut repository = Repository::locate_then_load(&current_dir()?)?
+        .ok_or(err_not_executed_inside_repository())?;
+    let other = Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
+
+    repository.add_link(&other, path)?;
+
+    success("Added new link");
+
+    Ok(())
+}
