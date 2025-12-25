@@ -277,6 +277,19 @@ impl Repository {
         // Archive::load(&self.name)?.ok().flatten()
     }
 
+    pub fn all_dependencies(&self) -> EyreResult<Vec<Name>> {
+        let mut out: Vec<_> = self.config.dependencies.keys().cloned().collect();
+
+        for name in out.clone() {
+            let repository = Repository::load(name.clone())?
+                .ok_or(err_resource_does_not_exist(&name.to_string()))?;
+
+            out.extend(repository.all_dependencies()?);
+        }
+
+        Ok(out)
+    }
+
     pub fn add_dependency(
         &mut self,
         name: &Name,

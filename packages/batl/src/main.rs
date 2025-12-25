@@ -60,6 +60,8 @@ enum SubCommand {
     Link { name: String, path: PathBuf },
     #[command(about = "Unlinks a depenency from a folder")]
     Unlink { name: String },
+    #[command(about = "Lists dependencies of the current repository")]
+    Deps,
     #[command(external_subcommand)]
     ExecShorthand(Vec<String>),
 }
@@ -90,6 +92,7 @@ fn main() {
         SubCommand::Search { name } => commands::cmd_search(name),
         SubCommand::Link { name, path } => commands::cmd_link(name, path),
         SubCommand::Unlink { name } => commands::cmd_unlink(name),
+        SubCommand::Deps => commands::cmd_deps(),
         SubCommand::ExecShorthand(args) => cmd_execshorthand(args),
     };
 

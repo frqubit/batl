@@ -409,3 +409,14 @@ pub fn cmd_unlink(name: String) -> EyreResult<()> {
     success(&format!("Removed link for {name}"));
     Ok(())
 }
+
+pub fn cmd_deps() -> EyreResult<()> {
+    let repository = Repository::locate_then_load(&current_dir()?)?
+        .ok_or(err_not_executed_inside_repository())?;
+
+    for dep in repository.all_dependencies()? {
+        println!("{dep}");
+    }
+
+    Ok(())
+}
