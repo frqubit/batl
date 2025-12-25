@@ -330,6 +330,29 @@ impl Repository {
         Ok(self)
     }
 
+    pub fn remove_link(&mut self, name: &Name) -> EyreResult<&mut Self> {
+        let link = self
+            .config
+            .links
+            .get(&name)
+            .ok_or(err_resource_does_not_have_thing(
+                "repository",
+                &format!("link with name {name}"),
+            ))?;
+
+        if link.exists() {
+            std::fs::remove_file(link)?;
+        }
+
+        self.remove_path_from_gitignore_file(link)?;
+
+        self.config.links.remove(name);
+
+        self.save()?;
+
+        Ok(self)
+    }
+
     fn add_path_to_gitignore_file(&self, path: &Path) -> EyreResult<()> {
         let gitignore_path = self.path.join(".gitignore");
         let gitignore_content = match gitignore_path.exists() {
@@ -355,6 +378,49 @@ impl Repository {
             gitignore_lines.push("# batl.gitignore begin DO NOT MODIFY".into());
             gitignore_lines.push(path.to_string_lossy().into());
             gitignore_lines.push("# batl.gitignore end DO NOT MODIFY".into());
+        }
+
+        let output = gitignore_lines.join("\n").into_bytes();
+        let mut out_file = std::fs::File::create(gitignore_path)?;
+        out_file.write(&output)?;
+
+        Ok(())
+    }
+
+    fn remove_path_from_gitignore_file(&self, path: &Path) -> EyreResult<()> {
+        let gitignore_path = self.path.join(".gitignore");
+        if !gitignore_path.exists() {
+            return Ok(());
+        }
+
+        let gitignore_content = {
+            let mut file = std::fs::File::open(&gitignore_path)?;
+            let mut out = String::new();
+            file.read_to_string(&mut out)?;
+            out
+        };
+
+        let mut gitignore_lines: Vec<String> =
+            gitignore_content.split('\n').map(String::from).collect();
+        let gitignore_batl_line = gitignore_lines
+            .iter()
+            .position(|v| *v == "# batl.gitignore begin DO NOT MODIFY");
+        let searching = path.to_string_lossy();
+
+        if let Some(gitignore_batl_begin) = gitignore_batl_line {
+            let found = gitignore_lines
+                .iter()
+                .skip(gitignore_batl_begin)
+                .enumerate()
+                .find(|(_, v)| *v == &searching || *v == "# batl.gitignore end DO NOT MODIFY");
+
+            if let Some((position, value)) = found {
+                if value == "# batl.gitignore end DO NOT MODIFY" {
+                    return Ok(());
+                } else {
+                    gitignore_lines.remove(position + gitignore_batl_begin);
+                }
+            }
         }
 
         let output = gitignore_lines.join("\n").into_bytes();

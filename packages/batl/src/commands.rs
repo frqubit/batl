@@ -399,3 +399,13 @@ pub fn cmd_link(name: String, path: PathBuf) -> EyreResult<()> {
 
     Ok(())
 }
+
+pub fn cmd_unlink(name: String) -> EyreResult<()> {
+    let mut repository = Repository::locate_then_load(&current_dir()?)?
+        .ok_or(err_not_executed_inside_repository())?;
+
+    repository.remove_link(&Name::new(&name)?)?;
+
+    success("Removed link for {name}");
+    Ok(())
+}
