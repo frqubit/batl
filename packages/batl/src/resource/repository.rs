@@ -3,8 +3,8 @@ use super::restrict::{Condition, Settings as RestrictSettings};
 use super::tomlconfig::TomlConfig;
 use super::{symlink_dir, tomlconfig, Name};
 use crate::error::{
-    err_battalion_not_setup, err_resource_already_exists, err_resource_does_not_exist,
-    err_resource_does_not_have_thing, EyreResult,
+    err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
+    err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -300,6 +300,13 @@ impl Repository {
     }
 
     pub fn remove_dependency(&mut self, name: &Name) -> EyreResult<&mut Self> {
+        if self.config.links.contains_key(name) {
+            return Err(err_action_impossible_while_condition(
+                "removing dependency",
+                "dependency is linked",
+            ));
+        }
+
         self.config.dependencies.remove(name);
         self.save()?;
 

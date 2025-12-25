@@ -406,6 +406,6 @@ pub fn cmd_unlink(name: String) -> EyreResult<()> {
 
     repository.remove_link(&Name::new(&name)?)?;
 
-    success("Removed link for {name}");
+    success(&format!("Removed link for {name}"));
     Ok(())
 }

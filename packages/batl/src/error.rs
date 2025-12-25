@@ -43,6 +43,10 @@ pub fn err_resource_does_not_have_thing(resource: &str, thing: &str) -> Report {
     eyre!("The resource {resource} doesn't have {thing}")
 }
 
+pub fn err_action_impossible_while_condition(ing_action: &str, condition: &str) -> Report {
+    eyre!("{ing_action} cannot be performed while {condition}")
+}
+
 // #[derive(Debug, Error)]
 // #[non_exhaustive]
 // pub enum ReadConfigError {
