@@ -65,19 +65,19 @@ impl Repository {
         let name_segments = name.path_segments_as_repository_name();
 
         if let Some(version) = &name.version {
-            let fetched_version_path =
-                crate::system::fetched_repository_root().map(|p| p.join(&name_segments));
+            let regular_version_path =
+                crate::system::repository_root().map(|p| p.join(&name_segments));
 
-            if let Some(path) = fetched_version_path {
+            if let Some(path) = regular_version_path {
                 if path.exists() {
                     return Self::from_path(&path).map(Option::Some);
                 }
             }
 
-            let regular_version_path =
-                crate::system::repository_root().map(|p| p.join(&name_segments));
+            let fetched_version_path =
+                crate::system::fetched_repository_root().map(|p| p.join(&name_segments));
 
-            if let Some(path) = regular_version_path {
+            if let Some(path) = fetched_version_path {
                 if path.exists() {
                     return Self::from_path(&path).map(Option::Some);
                 }
