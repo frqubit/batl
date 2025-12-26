@@ -44,6 +44,11 @@ pub fn repository_root() -> Option<PathBuf> {
     batl_root().map(|p| p.join("repositories"))
 }
 
+/// Get the battalion fetched repository root
+pub fn fetched_repository_root() -> Option<PathBuf> {
+    gen_root().map(|p| p.join("fetched"))
+}
+
 /// Get the battalion generator root
 #[inline]
 #[must_use]

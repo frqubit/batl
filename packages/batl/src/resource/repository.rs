@@ -271,10 +271,10 @@ impl Repository {
     ///
     /// Returns `None` if it has not been generated
     #[inline]
-    pub fn archive(&self) -> EyreResult<Archive> {
-        self.archive_gen()
+    pub fn archive(&self) -> EyreResult<Option<Archive>> {
+        // self.archive_gen()
 
-        // Archive::load(&self.name)?.ok().flatten()
+        Archive::load(&self.name)
     }
 
     pub fn all_dependencies(&self) -> EyreResult<Vec<Name>> {

@@ -72,7 +72,7 @@ struct SubCmdArgs<T: Subcommand> {
     subcmd: T,
 }
 
-fn main() {
+fn main() -> EyreResult<()> {
     let cli = Cli::parse();
 
     let result = match cli.subcmd {
@@ -98,8 +98,12 @@ fn main() {
 
     if let Err(err) = result {
         output::error(err.to_string().as_str());
-        std::process::exit(1);
+        if cfg!(debug_assertions) {
+            return Err(err);
+        }
     }
+
+    Ok(())
 }
 
 fn cmd_execshorthand(args: Vec<String>) -> EyreResult<()> {

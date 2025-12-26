@@ -2,11 +2,12 @@ use crate::error::*;
 use crate::error::{err_resource_does_not_exist, err_script_execution_failed};
 use crate::output::{error, info, success};
 use crate::resource::batlrc::AnyBatlRc;
-use crate::resource::tomlconfig::write_toml;
+use crate::resource::tomlconfig::{write_toml, TomlConfig};
+use crate::resource::{self, Name, Repository};
 use crate::resource::{batlrc::BatlRcLatest, BatlRc};
-use crate::resource::{Name, Repository};
 use crate::utils::REGISTRY_DOMAIN;
 use colored::*;
+use fs_extra::dir::CopyOptions;
 use std::env::current_dir;
 use std::path::PathBuf;
 
@@ -17,6 +18,7 @@ pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
 
     let filter_path = filter
         .map(|v| Name::new(&v).map(|v| Name::path_segments_as_folder_name(&v)))
+        .transpose()?
         .transpose()?
         .unwrap_or_default();
 
@@ -128,7 +130,9 @@ pub fn cmd_publish(name: String) -> EyreResult<()> {
 
     // let archive = repository.archive_gen()?;
 
-    let archive = repository.archive()?;
+    let archive = repository
+        .archive()?
+        .ok_or(err_resource_does_not_exist("archive"))?;
 
     let url = format!(
         "{REGISTRY_DOMAIN}/pkg/{}",
@@ -170,13 +174,33 @@ pub fn cmd_fetch(name: String) -> EyreResult<()> {
 
     let mut tar = tar::Archive::new(body);
 
-    let repository_path = crate::system::repository_root()
+    // The repository needs to be unpacked
+    // to a dummy folder first, then moved
+    // to its final destination
+    let dummy_folder = tempfile::tempdir()?;
+    tar.unpack(&dummy_folder)?;
+
+    // Get the version of the package
+    let repo_config =
+        resource::repository::Config::from(resource::repository::TomlConfigLatest::from(
+            resource::repository::AnyTomlConfig::read_toml(&dummy_folder.path().join("batl.toml"))?,
+        ));
+    let version = repo_config.version;
+    let name = name.with_version(version);
+
+    let repository_path = crate::system::fetched_repository_root()
         .ok_or(err_battalion_not_setup())?
         .join(name.path_segments_as_repository_name());
 
     std::fs::create_dir_all(&repository_path)?;
 
-    tar.unpack(repository_path)?;
+    fs_extra::dir::move_dir(
+        dummy_folder,
+        &repository_path,
+        &CopyOptions::new().content_only(true),
+    )?;
+
+    // std::fs::rename(dummy_folder.keep(), &repository_path)?;
 
     success(&format!("Fetched repository {name}"));
 
@@ -330,6 +354,7 @@ pub fn cmd_upgrade() -> EyreResult<()> {
         std::fs::create_dir(&gen_)?;
         std::fs::create_dir(gen_.join("archives"))?;
         std::fs::create_dir(gen_.join("archives/repositories"))?;
+        std::fs::create_dir(gen_.join("fetched"))?;
 
         success("Added gen folder");
     }

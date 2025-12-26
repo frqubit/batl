@@ -1,6 +1,7 @@
 use crate::error::{err_battalion_not_setup, err_input_requested_is_invalid, EyreResult};
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
+use semver::Version;
 use serde::de::{self, Deserialize, Deserializer, Visitor};
 use serde::ser::{self, Serialize};
 use std::path::{Path, PathBuf};
@@ -19,20 +20,41 @@ pub use self::repository::Repository;
 /// These are used for repositories, workspaces, and
 /// their archives
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Name(Vec<String>);
+pub struct Name {
+    segments: Vec<String>,
+    version: Option<Version>,
+}
 
 impl Name {
     /// Get the path components of a name
     #[must_use]
-    pub const fn components(&self) -> &Vec<String> {
-        &self.0
+    pub const fn segments(&self) -> &Vec<String> {
+        &self.segments
+    }
+
+    pub fn with_version(mut self, version: Version) -> Self {
+        self.version = Some(version);
+        self
     }
 
     pub fn new(val: &str) -> EyreResult<Self> {
         let mut next = String::new();
         let mut segments = vec![];
+        let mut version = String::new();
+        let mut doing_version = false;
 
         for c in val.chars() {
+            if doing_version {
+                version.push(c);
+                continue;
+            }
+
+            if c == '@' {
+                // Last segment will be pushed later, DO NOT do it now
+                doing_version = true;
+                continue;
+            }
+
             if next.is_empty() && c == '_' {
                 return Err(err_input_requested_is_invalid(
                     val,
@@ -57,6 +79,11 @@ impl Name {
             // Add any valid characters to the segment
             if c.is_alphanumeric() {
                 next.push(c);
+            } else {
+                return Err(err_input_requested_is_invalid(
+                    val,
+                    "Segment parts must be alphanumeric",
+                ));
             }
         }
 
@@ -71,7 +98,12 @@ impl Name {
 
         segments.push(next);
 
-        Ok(Self(segments))
+        let version = match version.is_empty() {
+            true => None,
+            false => Some(Version::parse(&version)?),
+        };
+
+        Ok(Self { segments, version })
     }
 
     pub fn from_absolute_path(value: &Path) -> EyreResult<Self> {
@@ -85,13 +117,42 @@ impl Name {
         let repository_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
 
         if let Ok(subpath) = value.strip_prefix(repository_root) {
+            let mut segments = vec![];
+            let mut version = None;
+            let mut doing_version = false;
+
+            let components = subpath
+                .components()
+                .map(|v| v.as_os_str().to_string_lossy());
+
+            for component in components {
+                if doing_version && version.is_none() {
+                    version = Some(Version::parse(&component.replace("__", "+"))?);
+                    continue;
+                }
+
+                if doing_version && version.is_some() {
+                    return Err(err_input_requested_is_invalid(
+                        &value.to_string_lossy(),
+                        "version must be last component of path",
+                    ));
+                }
+
+                if let Some(val) = component.strip_prefix("__") {
+                    doing_version = true;
+                    segments.push(val.to_string());
+                } else if let Some(val) = component.strip_prefix("_") {
+                    segments.push(val.to_string());
+                }
+            }
+
             let segments = subpath
                 .components()
                 .map(|v| v.as_os_str().to_string_lossy())
                 .map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
                 .collect();
 
-            return Ok(Self(segments));
+            return Ok(Name { segments, version });
         }
 
         Err(err_input_requested_is_invalid(
@@ -101,13 +162,20 @@ impl Name {
     }
 
     #[must_use]
-    pub fn path_segments_as_folder_name(&self) -> PathBuf {
-        self.components().iter().map(|v| format!("_{v}")).collect()
+    pub fn path_segments_as_folder_name(&self) -> EyreResult<PathBuf> {
+        if self.version.is_some() {
+            return Err(err_input_requested_is_invalid(
+                &format!("{self}"),
+                "names with versions cannot be used as folders",
+            ));
+        }
+
+        Ok(self.segments().iter().map(|v| format!("_{v}")).collect())
     }
 
     #[must_use]
     pub fn path_segments_as_repository_name(&self) -> PathBuf {
-        let parts = self.components();
+        let parts = self.segments();
 
         let mut path = PathBuf::new();
 
@@ -120,14 +188,29 @@ impl Name {
             path = path.join(format!("_{part}"));
         }
 
-        path = path.join(last.cloned().unwrap_or_default());
+        if let Some(version) = &self.version {
+            // last is guaranteed to be Some() because of checks on Name::new
+            // TODO: This is safe but make this a type-guaranteed check, maybe add a `last` field to name?
+            path = path
+                .join(format!("__{}", last.cloned().unwrap_or_default()))
+                .join(version.to_string().replace('+', "__"));
+        } else {
+            path = path.join(last.cloned().unwrap_or_default());
+        }
 
         path
     }
 
     #[must_use]
     pub fn url_path_segments(&self) -> String {
-        self.0.join("/")
+        let segments = self.segments.join("/");
+        let version = self
+            .version
+            .as_ref()
+            .map(|version| format!("/_v{}", version.to_string().replace("+", "__")))
+            .unwrap_or_default();
+
+        format!("{segments}{version}")
     }
 }
 
@@ -143,7 +226,13 @@ impl FromStr for Name {
 impl Display for Name {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.0.join("."))
+        f.write_str(&self.segments.join("."))?;
+
+        if let Some(version) = &self.version {
+            f.write_fmt(format_args!("@{version}"))?;
+        }
+
+        Ok(())
     }
 }
 
