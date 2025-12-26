@@ -1,5 +1,4 @@
 use crate::error::{err_battalion_not_setup, err_input_requested_is_invalid, EyreResult};
-use crate::system::fetched_repository_root;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
 use semver::Version;
@@ -83,7 +82,7 @@ impl Name {
             }
 
             // Add any valid characters to the segment
-            if c.is_alphanumeric() {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
                 next.push(c);
             } else {
                 return Err(err_input_requested_is_invalid(
