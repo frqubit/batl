@@ -1,4 +1,5 @@
 use crate::error::{err_battalion_not_setup, err_input_requested_is_invalid, EyreResult};
+use crate::system::fetched_repository_root;
 use core::fmt::{Display, Formatter};
 use core::str::FromStr;
 use semver::Version;
@@ -34,6 +35,11 @@ impl Name {
 
     pub fn with_version(mut self, version: Version) -> Self {
         self.version = Some(version);
+        self
+    }
+
+    pub fn without_version(mut self) -> Self {
+        self.version = None;
         self
     }
 
@@ -115,8 +121,14 @@ impl Name {
         }
 
         let repository_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
+        let fetched_repository_root =
+            crate::system::fetched_repository_root().ok_or(err_battalion_not_setup())?;
+        let mut subpath = value.strip_prefix(repository_root);
+        if subpath.is_err() {
+            subpath = value.strip_prefix(fetched_repository_root)
+        }
 
-        if let Ok(subpath) = value.strip_prefix(repository_root) {
+        if let Ok(subpath) = subpath {
             let mut segments = vec![];
             let mut version = None;
             let mut doing_version = false;

@@ -61,20 +61,66 @@ impl Repository {
     /// Returns `None` if no repository is found.
     #[inline]
     pub fn load(name: Name) -> EyreResult<Option<Self>> {
-        let repo_path = crate::system::repository_root()
-            .map(|p| p.join(name.path_segments_as_repository_name()));
+        // If the repository has a version, first try to load from fetched
+        let name_segments = name.path_segments_as_repository_name();
 
-        if let Some(path) = repo_path {
-            let toml = AnyTomlConfig::read_toml(&path.join("batl.toml"))?;
-            let latest = TomlConfigLatest::from(toml);
+        if let Some(version) = &name.version {
+            let fetched_version_path =
+                crate::system::fetched_repository_root().map(|p| p.join(&name_segments));
 
-            Ok(Some(Self {
-                path,
-                config: Config::from(latest),
-                name,
-            }))
-        } else {
+            if let Some(path) = fetched_version_path {
+                if path.exists() {
+                    return Self::from_path(&path).map(Option::Some);
+                }
+            }
+
+            let regular_version_path =
+                crate::system::repository_root().map(|p| p.join(&name_segments));
+
+            if let Some(path) = regular_version_path {
+                if path.exists() {
+                    return Self::from_path(&path).map(Option::Some);
+                }
+            }
+
+            // Remove version and check for local copy to match version
+            let name_segments_noversion = name
+                .clone()
+                .without_version()
+                .path_segments_as_repository_name();
+
+            let regular_version_path =
+                crate::system::repository_root().map(|p| p.join(&name_segments_noversion));
+
+            if let Some(path) = regular_version_path {
+                if path.exists() {
+                    let repository = Self::from_path(&path)?;
+
+                    if repository.config().version == version.clone() {
+                        return Ok(Some(repository));
+                    } else {
+                        return Ok(None);
+                    }
+                }
+            }
+
             Ok(None)
+        } else {
+            let repo_path = crate::system::repository_root()
+                .map(|p| p.join(name.path_segments_as_repository_name()));
+
+            if let Some(path) = repo_path {
+                let toml = AnyTomlConfig::read_toml(&path.join("batl.toml"))?;
+                let latest = TomlConfigLatest::from(toml);
+
+                Ok(Some(Self {
+                    path,
+                    config: Config::from(latest),
+                    name,
+                }))
+            } else {
+                Ok(None)
+            }
         }
     }
 
