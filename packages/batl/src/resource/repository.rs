@@ -61,10 +61,10 @@ impl Repository {
     /// Returns `None` if no repository is found.
     #[inline]
     pub fn load(name: Name) -> EyreResult<Option<Self>> {
-        // If the repository has a version, first try to load from fetched
         let name_segments = name.path_segments_as_repository_name();
 
         if let Some(version) = &name.version {
+            // If the repository has a version, try to load local copy first
             let regular_version_path =
                 crate::system::repository_root().map(|p| p.join(&name_segments));
 
@@ -74,6 +74,7 @@ impl Repository {
                 }
             }
 
+            // If that fails, try to find a fetched copy
             let fetched_version_path =
                 crate::system::fetched_repository_root().map(|p| p.join(&name_segments));
 
@@ -83,7 +84,8 @@ impl Repository {
                 }
             }
 
-            // Remove version and check for local copy to match version
+            // If that also fails, remove the version and check if the nonversion local
+            // copy matches the version requested
             let name_segments_noversion = name
                 .clone()
                 .without_version()
@@ -106,21 +108,63 @@ impl Repository {
 
             Ok(None)
         } else {
-            let repo_path = crate::system::repository_root()
+            // First check for the regular local version
+            let regular_path = crate::system::repository_root()
                 .map(|p| p.join(name.path_segments_as_repository_name()));
 
-            if let Some(path) = repo_path {
-                let toml = AnyTomlConfig::read_toml(&path.join("batl.toml"))?;
-                let latest = TomlConfigLatest::from(toml);
-
-                Ok(Some(Self {
-                    path,
-                    config: Config::from(latest),
-                    name,
-                }))
-            } else {
-                Ok(None)
+            if let Some(path) = regular_path {
+                if path.exists() {
+                    return Self::from_path(&path).map(Option::Some);
+                }
             }
+
+            // If this fails, look for any versioned local copies and
+            // choose the latest one
+            let versioned_folder = crate::system::repository_root()
+                .map(|p| p.join(name.path_segments_as_version_folder()));
+
+            if let Some(path) = versioned_folder {
+                if path.exists() {
+                    let mut versions = std::fs::read_dir(path)?
+                        .filter_map(|ent1| ent1.ok().map(|ent2| ent2.file_name()))
+                        .map(|ver| Version::parse(&ver.to_string_lossy()))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    versions.sort();
+
+                    if let Some(version) = versions.last() {
+                        let versioned_name = name.clone().with_version(version.clone());
+
+                        // This is guaranteed to work since local versions have precedence
+                        return Self::load(versioned_name);
+                    }
+                }
+            }
+
+            // If this fails, look for any versioned fetched copies
+            // through the exact same process
+            // If this fails, look for any versioned local copies and
+            // choose the latest one
+            let versioned_folder = crate::system::fetched_repository_root()
+                .map(|p| p.join(name.path_segments_as_version_folder()));
+
+            if let Some(path) = versioned_folder {
+                if path.exists() {
+                    let mut versions = std::fs::read_dir(path)?
+                        .filter_map(|ent1| ent1.ok().map(|ent2| ent2.file_name()))
+                        .map(|ver| Version::parse(&ver.to_string_lossy()))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    versions.sort();
+
+                    if let Some(version) = versions.last() {
+                        let versioned_name = name.clone().with_version(version.clone());
+
+                        // This is guaranteed to work since we know there's no local versions
+                        return Self::load(versioned_name);
+                    }
+                }
+            }
+
+            Ok(None)
         }
     }
 

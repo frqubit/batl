@@ -185,6 +185,28 @@ impl Name {
     }
 
     #[must_use]
+    pub fn path_segments_as_version_folder(&self) -> PathBuf {
+        let parts = self.segments();
+
+        let mut path = PathBuf::new();
+
+        let mut parts_rev = parts.iter().rev();
+        let last = parts_rev.next();
+
+        let parts_without_end = parts_rev.rev();
+
+        for part in parts_without_end {
+            path = path.join(format!("_{part}"));
+        }
+
+        // last is guaranteed to be Some() because of checks on Name::new
+        // TODO: This is safe but make this a type-guaranteed check, maybe add a `last` field to name?
+        path = path.join(last.map(|v| format!("__{v}")).unwrap_or_default());
+
+        path
+    }
+
+    #[must_use]
     pub fn path_segments_as_repository_name(&self) -> PathBuf {
         let parts = self.segments();
 
