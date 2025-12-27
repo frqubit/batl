@@ -32,6 +32,10 @@ impl Name {
         &self.segments
     }
 
+    pub const fn version(&self) -> &Option<Version> {
+        &self.version
+    }
+
     pub fn with_version(mut self, version: Version) -> Self {
         self.version = Some(version);
         self

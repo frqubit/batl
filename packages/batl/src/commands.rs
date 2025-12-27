@@ -8,15 +8,97 @@ use crate::resource::{batlrc::BatlRcLatest, BatlRc};
 use crate::utils::REGISTRY_DOMAIN;
 use colored::*;
 use fs_extra::dir::CopyOptions;
+use itertools::Itertools;
+use semver::Version;
 use std::env::current_dir;
 use std::path::PathBuf;
 
 pub mod repository;
 
+fn print_versions(name: Name) -> EyreResult<()> {
+    if name.version().is_some() {
+        return Err(err_input_requested_is_invalid(
+            &name.to_string(),
+            "cannot list versions of versioned repository",
+        ));
+    }
+
+    let repo_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
+    let fetched_root = crate::system::fetched_repository_root().ok_or(err_battalion_not_setup())?;
+
+    let without_version = name.clone().without_version();
+
+    let local_base_path = repo_root.join(without_version.path_segments_as_repository_name());
+    let local_versioned_path = repo_root.join(without_version.path_segments_as_version_folder());
+    let fetched_path = fetched_root.join(without_version.path_segments_as_version_folder());
+
+    let mut local_base_repo_exists = false;
+
+    // First print the local base version, if it exists
+    if let Ok(local_base_repo) = Repository::from_path(&local_base_path) {
+        local_base_repo_exists = true;
+
+        println!(
+            "{} : {}",
+            &without_version,
+            local_base_repo.config().version
+        );
+    }
+
+    // Next, get all of the versions local and fetched
+    let local_entries = std::fs::read_dir(local_versioned_path)
+        .ok()
+        .map(|entries| {
+            entries
+                .filter_map(|entry| entry.ok())
+                .map(|entry| entry.file_name().to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let fetched_entries = std::fs::read_dir(fetched_path)
+        .ok()
+        .map(|entries| {
+            entries
+                .filter_map(|entry| entry.ok())
+                .map(|entry| entry.file_name().to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let versions = local_entries
+        .iter()
+        .map(|val| (true, val))
+        .chain(fetched_entries.iter().map(|val| (false, val)))
+        .filter_map(|(is_local, val)| {
+            Version::parse(&val.replace("__", "+"))
+                .ok()
+                .map(|ver| (is_local, ver))
+        })
+        .sorted_by(|a, b| Ord::cmp(&a.1, &b.1))
+        .collect::<Vec<_>>();
+
+    if versions.is_empty() && !local_base_repo_exists {
+        return Err(err_resource_does_not_exist(&without_version.to_string()));
+    }
+
+    for (is_local, version) in versions {
+        let name = name.clone().with_version(version);
+        if is_local {
+            println!("{}", name.to_string());
+        } else {
+            println!("{}", name.to_string().bright_red());
+        }
+    }
+
+    Ok(())
+}
+
 pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
     let repo_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
 
     let filter_path = filter
+        .clone()
         .map(|v| Name::new(&v).map(|v| Name::path_segments_as_folder_name(&v)))
         .transpose()?
         .transpose()?
@@ -25,25 +107,49 @@ pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
     let search_path = repo_root.join(filter_path);
 
     if !search_path.exists() {
-        return Ok(());
+        if let Some(v) = filter {
+            let name = Name::new(&v)?;
+            return print_versions(name);
+        } else {
+            return Ok(());
+        }
     }
 
-    let found = std::fs::read_dir(search_path)?
+    let names = std::fs::read_dir(search_path)?
         .filter_map(|entry| entry.ok())
-        .map(|entry| {
-            let name_os = entry.file_name();
-            let name = name_os.to_string_lossy();
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .collect::<Vec<_>>();
 
-            if let Some(folder) = name.strip_prefix('_') {
-                folder.blue()
+    for name in names.iter() {
+        if let Some(versioned) = name.strip_prefix("__") {
+            if names.contains(&versioned.into()) {
+                println!("{}", versioned.green().italic());
             } else {
-                name.italic()
+                println!("{}", versioned.green());
             }
-        });
-
-    for name in found {
-        println!("{name}");
+        } else if let Some(folder) = name.strip_prefix("_") {
+            println!("{}", folder.blue());
+        } else if !names.contains(&format!("__{name}")) {
+            println!("{}", name.italic())
+        }
     }
+
+    // let found = std::fs::read_dir(search_path)?
+    //     .filter_map(|entry| entry.ok())
+    //     .map(|entry| {
+    //         let name_os = entry.file_name();
+    //         let name = name_os.to_string_lossy();
+
+    //         if let Some(folder) = name.strip_prefix('_') {
+    //             folder.blue()
+    //         } else {
+    //             name.italic()
+    //         }
+    //     });
+
+    // for name in found {
+    //     println!("{name}");
+    // }
 
     //
 
@@ -90,11 +196,20 @@ pub fn cmd_init(name: String) -> EyreResult<()> {
 }
 
 pub fn cmd_delete(name: String) -> EyreResult<()> {
-    Repository::load(Name::new(&name)?)?
-        .ok_or(err_resource_does_not_exist(&name))?
-        .destroy()?;
+    let confirmation = dialoguer::Confirm::new()
+        .with_prompt("This deletion is permanent, are you sure you want to continue?")
+        .interact()
+        .unwrap();
 
-    success("Deleted repository successfully");
+    if confirmation {
+        Repository::load(Name::new(&name)?)?
+            .ok_or(err_resource_does_not_exist(&name))?
+            .destroy()?;
+
+        success("Deleted repository successfully");
+    } else {
+        info("cancelled");
+    }
 
     Ok(())
 }
@@ -102,7 +217,9 @@ pub fn cmd_delete(name: String) -> EyreResult<()> {
 pub fn cmd_search(name: Option<String>) -> EyreResult<()> {
     let name = name.map(|v| Name::new(&v)).transpose()?;
 
-    let name_query = name.map(|v| format!("?q={v}")).unwrap_or("".into());
+    let name_query = name
+        .map(|v| format!("?q={}", v.url_path_segments()))
+        .unwrap_or("".into());
     let url = format!("{REGISTRY_DOMAIN}/pkg{name_query}");
 
     let body = ureq::get(&url).call()?.body_mut().read_to_string()?;
