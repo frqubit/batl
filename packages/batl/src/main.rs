@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+use std::{env::current_dir, path::PathBuf};
 
 use clap::{Args, Parser, Subcommand};
 use color_eyre::{eyre::eyre, Result as EyreResult};
+use error::err_not_executed_inside_repository;
+use resource::Repository;
 
 mod commands;
 mod error;
@@ -113,7 +115,18 @@ fn cmd_execshorthand(args: Vec<String>) -> EyreResult<()> {
         .ok_or(eyre!("Shorthand exec requires resource argument"))?;
 
     if let Some((name, cmd)) = resource.split_once(':') {
-        commands::cmd_exec(Some(name.into()), cmd.into(), args.collect())
+        if name.is_empty() {
+            let name = Repository::locate_then_load(&current_dir()?)?
+                .ok_or(err_not_executed_inside_repository())?;
+
+            commands::cmd_exec(
+                Some(name.name().clone().to_string()),
+                cmd.into(),
+                args.collect(),
+            )
+        } else {
+            commands::cmd_exec(Some(name.into()), cmd.into(), args.collect())
+        }
     } else {
         commands::cmd_exec(Some(resource.clone()), "exec".into(), args.collect())
     }

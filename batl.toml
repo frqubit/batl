@@ -6,7 +6,7 @@ name = "battalion.batl"
 version = "0.1.0"
 
 [scripts]
-build = 'echo "No build targets" && exit 1'
+install = "cargo install --debug --path packages/batl"
 
 [restrict.Unix]
 include = "require"
