@@ -1,10 +1,12 @@
 [environment]
-version = "0.2.0"
+version = "0.3.0"
 
 [repository]
-name = "batl-cli"
-version = "0.2.0"
-build = "batl repository exec build.lua"
+name = "battalion.batl"
+version = "0.1.0"
 
 [scripts]
-build = "echo \"Building...\""
+build = 'echo "No build targets" && exit 1'
+
+[restrict.Unix]
+include = "require"
