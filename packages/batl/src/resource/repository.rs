@@ -9,6 +9,7 @@ use crate::error::{
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env::current_dir;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -108,7 +109,16 @@ impl Repository {
 
             Ok(None)
         } else {
-            // First check for the regular local version
+            // First check for a dependency, if there's a dependency then use that
+            if let Some(repository) = Repository::locate_then_load(&current_dir()?)? {
+                let dependency = repository.config().dependencies.get(&name);
+
+                if let Some(version) = dependency {
+                    return Self::load(name.with_version(Version::parse(version)?));
+                }
+            }
+
+            // If this fails, check for the regular local version
             let regular_path = crate::system::repository_root()
                 .map(|p| p.join(name.path_segments_as_repository_name()));
 
