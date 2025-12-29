@@ -94,8 +94,20 @@ fn print_versions(name: Name) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_ls(filter: Option<String>) -> EyreResult<()> {
+pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
     let repo_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
+
+    if versions {
+        if let Some(v) = filter {
+            let name = Name::new(&v)?;
+            return print_versions(name);
+        } else {
+            return Err(err_input_requested_is_invalid(
+                "empty filter",
+                "forced version requires a repository name",
+            ));
+        }
+    }
 
     let filter_path = filter
         .clone()

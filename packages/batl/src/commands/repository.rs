@@ -53,7 +53,7 @@ pub enum Commands {
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
-        Commands::Ls { filter } => super::cmd_ls(filter),
+        Commands::Ls { filter } => super::cmd_ls(filter, false),
         Commands::Init { name } => super::cmd_init(name),
         Commands::Delete { name } => super::cmd_delete(name),
         Commands::Clone { url, name } => cmd_clone(url, name),
