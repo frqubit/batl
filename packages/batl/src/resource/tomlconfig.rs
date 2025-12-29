@@ -4,10 +4,16 @@
 use crate::error::EyreResult;
 use crate::resource::Name;
 use batl_macros::{environment_struct_impl, versioned_identical};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+
+environment_struct_impl!("0.2.0");
+environment_struct_impl!("0.2.1");
+environment_struct_impl!("0.2.2");
+environment_struct_impl!("0.3.0");
 
 versioned_identical!("0.3.0" => "latest" : [
     Environment,
@@ -22,16 +28,12 @@ versioned_identical!("0.3.0" => "latest" : [
 versioned_identical!("0.2.2" => "0.3.0" : [
     Repository,
     Scripts,
-    Dependencies,
     Restrict,
     Restrictor,
     Links
 ]);
 
-environment_struct_impl!("0.2.0");
-environment_struct_impl!("0.2.1");
-environment_struct_impl!("0.2.2");
-environment_struct_impl!("0.3.0");
+pub type Dependencies0_3_0 = HashMap<Name, Version>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Repository0_2_2 {

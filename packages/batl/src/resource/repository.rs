@@ -114,7 +114,7 @@ impl Repository {
                 let dependency = repository.config().dependencies.get(&name);
 
                 if let Some(version) = dependency {
-                    return Self::load(name.with_version(Version::parse(version)?));
+                    return Self::load(name.with_version(version.clone()));
                 }
             }
 
@@ -404,9 +404,7 @@ impl Repository {
             }
         };
 
-        self.config
-            .dependencies
-            .insert(name.clone(), version.to_string());
+        self.config.dependencies.insert(name.clone(), version);
         self.save()?;
 
         Ok(self)
@@ -549,6 +547,10 @@ impl Repository {
 
         Ok(())
     }
+
+    // pub fn summarize(&self) -> RepositorySummary {
+    //     self.into()
+    // }
 }
 
 #[derive(Clone)]
@@ -558,7 +560,7 @@ pub struct Config {
     pub version: Version,
     pub git: Option<GitConfig>,
     pub scripts: HashMap<String, String>,
-    pub dependencies: HashMap<Name, String>,
+    pub dependencies: HashMap<Name, Version>,
     pub links: HashMap<Name, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
 }
@@ -638,11 +640,20 @@ pub struct TomlConfig0_2_2 {
 impl From<TomlConfig0_2_2> for TomlConfigLatest {
     #[inline]
     fn from(value: TomlConfig0_2_2) -> Self {
+        let dependencies = value.dependencies.map(|deps| {
+            deps.into_iter()
+                .map(|(k, v)| {
+                    let version = Version::parse(&v).unwrap_or(Version::new(0, 0, 0));
+                    (k, version)
+                })
+                .collect()
+        });
+
         Self {
             environment: tomlconfig::EnvironmentLatest::default(),
             repository: value.repository,
             scripts: value.scripts,
-            dependencies: value.dependencies,
+            dependencies,
             links: None,
             restrict: value.restrict,
         }
@@ -661,16 +672,22 @@ pub struct TomlConfig0_2_1 {
 impl From<TomlConfig0_2_1> for TomlConfigLatest {
     #[inline]
     fn from(value: TomlConfig0_2_1) -> Self {
+        TomlConfig0_2_2::from(value).into()
+    }
+}
+
+impl From<TomlConfig0_2_1> for TomlConfig0_2_2 {
+    #[inline]
+    fn from(value: TomlConfig0_2_1) -> Self {
         Self {
-            environment: tomlconfig::EnvironmentLatest::default(),
-            repository: tomlconfig::RepositoryLatest {
+            environment: tomlconfig::Environment0_2_2::default(),
+            repository: tomlconfig::Repository0_2_2 {
                 name: value.repository.name,
                 version: value.repository.version,
                 git: value.repository.git,
             },
             scripts: value.scripts,
             dependencies: value.dependencies,
-            links: None,
             restrict: None,
         }
     }
@@ -688,16 +705,22 @@ pub struct TomlConfig0_2_0 {
 impl From<TomlConfig0_2_0> for TomlConfigLatest {
     #[inline]
     fn from(value: TomlConfig0_2_0) -> Self {
+        TomlConfig0_2_2::from(value).into()
+    }
+}
+
+impl From<TomlConfig0_2_0> for TomlConfig0_2_2 {
+    #[inline]
+    fn from(value: TomlConfig0_2_0) -> Self {
         Self {
-            environment: tomlconfig::EnvironmentLatest::default(),
-            repository: tomlconfig::RepositoryLatest {
+            environment: tomlconfig::Environment0_2_2::default(),
+            repository: tomlconfig::Repository0_2_2 {
                 name: value.repository.name,
                 version: value.repository.version,
                 git: value.repository.git,
             },
             scripts: value.scripts,
             dependencies: value.dependencies,
-            links: None,
             restrict: None,
         }
     }
