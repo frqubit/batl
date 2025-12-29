@@ -202,9 +202,21 @@ pub fn cmd_delete(name: String) -> EyreResult<()> {
         .unwrap();
 
     if confirmation {
-        Repository::load(Name::new(&name)?)?
-            .ok_or(err_resource_does_not_exist(&name))?
-            .destroy()?;
+        let repository =
+            Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
+
+        let mut path = repository.path().to_path_buf();
+
+        repository.destroy()?;
+
+        while let Some(parent) = path.parent() {
+            if std::fs::read_dir(parent)?.count() == 0 {
+                std::fs::remove_dir(parent)?;
+                path = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
 
         success("Deleted repository successfully");
     } else {
