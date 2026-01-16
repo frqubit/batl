@@ -10,7 +10,7 @@ pub mod archive;
 pub mod batlrc;
 pub mod repository;
 pub mod restrict;
-// pub mod summary;
+pub mod summary;
 pub mod tomlconfig;
 
 pub use self::batlrc::BatlRcLatest as BatlRc;

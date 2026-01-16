@@ -580,8 +580,11 @@ pub fn cmd_deps() -> EyreResult<()> {
     let repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    for dep in repository.all_dependencies()? {
-        println!("{dep}");
+    let summary = repository.summarize()?;
+
+    for dep in summary.dependencies.into_iter() {
+        let name = dep.0.with_version(dep.1);
+        println!("{name}");
     }
 
     Ok(())

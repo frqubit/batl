@@ -1,5 +1,6 @@
 use super::archive::Archive;
 use super::restrict::{Condition, Settings as RestrictSettings};
+use super::summary::RepositorySummary;
 use super::tomlconfig::TomlConfig;
 use super::{symlink_dir, tomlconfig, Name};
 use crate::error::{
@@ -548,9 +549,9 @@ impl Repository {
         Ok(())
     }
 
-    // pub fn summarize(&self) -> RepositorySummary {
-    //     self.into()
-    // }
+    pub fn summarize(&self) -> EyreResult<RepositorySummary> {
+        RepositorySummary::of_repository(self)
+    }
 }
 
 #[derive(Clone)]
