@@ -63,7 +63,7 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         // },
         Commands::Archive { name } => cmd_archive(name),
         Commands::Publish { name } => super::cmd_publish(name),
-        Commands::Fetch { name } => super::cmd_fetch(name),
+        Commands::Fetch { name } => super::cmd_fetch(name, super::CmdFetchOptions::default()),
         Commands::Which { name } => super::cmd_which(name),
         Commands::Exec { name, script } => super::cmd_exec(name, script, vec![]),
     }

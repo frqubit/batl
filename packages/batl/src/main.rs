@@ -39,7 +39,13 @@ enum SubCommand {
     #[command(about = "Publishes a repository")]
     Publish { name: String },
     #[command(about = "Fetches a repository from the battalion registry")]
-    Fetch { name: String },
+    Fetch {
+        name: String,
+        #[arg(long = "git")]
+        git: bool,
+        #[arg(long = "local")]
+        local: bool
+    },
     #[command(about = "Gets the system path to a repository")]
     Which { name: String },
     #[command(about = "Executes a command on a repository")]
@@ -92,7 +98,7 @@ fn main() -> EyreResult<()> {
         SubCommand::Init { name } => commands::cmd_init(name),
         SubCommand::Delete { name } => commands::cmd_delete(name),
         SubCommand::Publish { name } => commands::cmd_publish(name),
-        SubCommand::Fetch { name } => commands::cmd_fetch(name),
+        SubCommand::Fetch { name, git, local } => commands::cmd_fetch(name, commands::CmdFetchOptions { git, local }),
         SubCommand::Exec { name, script, args } => commands::cmd_exec(name, script, args),
         SubCommand::Which { name } => commands::cmd_which(name),
         SubCommand::Search { name } => commands::cmd_search(name),

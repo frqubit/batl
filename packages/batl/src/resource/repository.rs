@@ -501,7 +501,7 @@ impl Repository {
 
         let output = gitignore_lines.join("\n").into_bytes();
         let mut out_file = std::fs::File::create(gitignore_path)?;
-        out_file.write(&output)?;
+        out_file.write_all(&output)?;
 
         Ok(())
     }
@@ -544,7 +544,7 @@ impl Repository {
 
         let output = gitignore_lines.join("\n").into_bytes();
         let mut out_file = std::fs::File::create(gitignore_path)?;
-        out_file.write(&output)?;
+        out_file.write_all(&output)?;
 
         Ok(())
     }
