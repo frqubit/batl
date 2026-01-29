@@ -7,10 +7,14 @@ use crate::resource::{self, Name, Repository};
 use crate::resource::{batlrc::BatlRcLatest, BatlRc};
 use crate::utils::REGISTRY_DOMAIN;
 use colored::*;
+use console::Term;
 use fs_extra::dir::CopyOptions;
+use git2::build::RepoBuilder;
+use git2::{FetchOptions, Progress, RemoteCallbacks};
 use itertools::Itertools;
 use semver::Version;
 use std::env::current_dir;
+use std::io::Write;
 use std::path::PathBuf;
 
 pub mod repository;
@@ -296,30 +300,75 @@ pub fn cmd_publish(name: String) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_fetch(name: String) -> EyreResult<()> {
-    let name = Name::new(&name)?;
+#[derive(Default)]
+pub struct CmdFetchOptions {
+    pub git: bool,
+    pub local: bool
+}
 
-    let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.url_path_segments());
+fn transfer_progress(progress: Progress<'_>) -> bool {
+    let percentage = progress.received_objects() as f64 / progress.total_objects() as f64;
 
-    let resp = ureq::get(&url).call()?;
+    let mut term = Term::stdout();
 
-    if resp.status() != 200 {
-        error(&format!(
-            "Failed to fetch repository: status code {}",
-            resp.status()
-        ));
-        return Ok(());
-    }
+    term.clear_line().unwrap();
+    term.write_fmt(format_args!(
+        "Cloning repository... {:.2}%",
+        percentage * 100.0
+    ))
+    .unwrap();
+    term.flush().unwrap();
 
-    let body = resp.into_body().into_reader();
+    true
+}
 
-    let mut tar = tar::Archive::new(body);
+pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
+    let dummy_folder = match options.git {
+        false => {
+            let name = Name::new(&name)?;
 
-    // The repository needs to be unpacked
-    // to a dummy folder first, then moved
-    // to its final destination
-    let dummy_folder = tempfile::tempdir()?;
-    tar.unpack(&dummy_folder)?;
+            let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.url_path_segments());
+        
+            let resp = ureq::get(&url).call()?;
+        
+            if resp.status() != 200 {
+                error(&format!(
+                    "Failed to fetch repository: status code {}",
+                    resp.status()
+                ));
+                return Ok(());
+            }
+        
+            let body = resp.into_body().into_reader();
+        
+            let mut tar = tar::Archive::new(body);
+        
+            // The repository needs to be unpacked
+            // to a dummy folder first, then moved
+            // to its final destination
+            let dummy_folder = tempfile::tempdir()?;
+            tar.unpack(&dummy_folder)?;
+
+            dummy_folder
+        },
+        true => {
+            let dummy_folder = tempfile::tempdir()?;
+
+            let mut fetch_callbacks = RemoteCallbacks::new();
+            fetch_callbacks.transfer_progress(transfer_progress);
+    
+            let mut fetch_options = FetchOptions::new();
+            fetch_options.remote_callbacks(fetch_callbacks);
+    
+            RepoBuilder::new()
+                .fetch_options(fetch_options)
+                .clone(&name, dummy_folder.path())?;
+    
+            success("Successfully fetched repository");
+
+            dummy_folder
+        }
+    };
 
     // Get the version of the package
     let repo_config =
@@ -327,11 +376,12 @@ pub fn cmd_fetch(name: String) -> EyreResult<()> {
             resource::repository::AnyTomlConfig::read_toml(&dummy_folder.path().join("batl.toml"))?,
         ));
     let version = repo_config.version;
-    let name = name.with_version(version);
+    let name = repo_config.name.with_version(version);
 
-    let repository_path = crate::system::fetched_repository_root()
-        .ok_or(err_battalion_not_setup())?
-        .join(name.path_segments_as_repository_name());
+    let repository_path = match options.local {
+        true => crate::system::repository_root(),
+        false => crate::system::fetched_repository_root()
+    }.ok_or(err_battalion_not_setup())?.join(name.path_segments_as_repository_name());
 
     std::fs::create_dir_all(&repository_path)?;
 
