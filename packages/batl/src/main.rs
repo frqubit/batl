@@ -40,8 +40,8 @@ enum SubCommand {
     Publish { name: String },
     #[command(about = "Fetches a repository from the battalion registry")]
     Fetch { name: String },
-    #[command(about = "Gets the system path to a repository")]
-    Which { name: String },
+    #[command(about = "Gets the system path to a repository or name of current repository")]
+    Which { name: Option<String> },
     #[command(about = "Executes a command on a repository")]
     Exec {
         #[arg(short = 'n')]

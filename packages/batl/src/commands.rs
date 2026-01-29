@@ -394,11 +394,18 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Eyre
     }
 }
 
-pub fn cmd_which(name: String) -> EyreResult<()> {
-    let repository =
-        Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
+pub fn cmd_which(name: Option<String>) -> EyreResult<()> {
+    if let Some(name) = name {
+        let repository =
+            Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
 
-    println!("{}", repository.path().to_string_lossy());
+        println!("{}", repository.path().to_string_lossy());
+    } else {
+        let repository = Repository::locate_then_load(&current_dir()?)?
+            .ok_or(err_not_executed_inside_repository())?;
+
+        println!("{}", repository.name());
+    }
 
     Ok(())
 }
