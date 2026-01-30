@@ -7,6 +7,7 @@ use crate::error::{
     err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
     err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
+use crate::resource::SubpathableName;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -412,7 +413,15 @@ impl Repository {
     }
 
     pub fn remove_dependency(&mut self, name: &Name) -> EyreResult<&mut Self> {
-        if self.config.links.contains_key(name) {
+        let mut contains_link_from = false;
+        for key in self.config.links.keys() {
+            if key.name() == name {
+                contains_link_from = true;
+                break;
+            }
+        }
+
+        if contains_link_from {
             return Err(err_action_impossible_while_condition(
                 "removing dependency",
                 "dependency is linked",
@@ -425,10 +434,15 @@ impl Repository {
         Ok(self)
     }
 
-    pub fn add_link(&mut self, repository: &Repository, path: PathBuf) -> EyreResult<&mut Self> {
+    pub fn add_link(
+        &mut self,
+        repository: &Repository,
+        dest: PathBuf,
+        subpath: Option<PathBuf>,
+    ) -> EyreResult<&mut Self> {
         let name = repository.name().clone();
 
-        if path.exists() {
+        if dest.exists() {
             return Err(err_resource_already_exists());
         }
 
@@ -439,21 +453,28 @@ impl Repository {
             ));
         }
 
-        self.add_path_to_gitignore_file(&path)?;
+        self.add_path_to_gitignore_file(&dest)?;
 
-        symlink_dir(repository.path(), &path)?;
-        self.config.links.insert(name, path);
+        let src_path = subpath
+            .as_ref()
+            .map(|sp| repository.path().join(sp))
+            .unwrap_or(repository.path().into());
+
+        symlink_dir(&src_path, &dest)?;
+
+        let subpathed_name = SubpathableName::new(name, subpath);
+        self.config.links.insert(subpathed_name, dest);
 
         self.save()?;
 
         Ok(self)
     }
 
-    pub fn remove_link(&mut self, name: &Name) -> EyreResult<&mut Self> {
+    pub fn remove_link(&mut self, name: &SubpathableName) -> EyreResult<&mut Self> {
         let link = self
             .config
             .links
-            .get(&name)
+            .get(name)
             .ok_or(err_resource_does_not_have_thing(
                 "repository",
                 &format!("link with name {name}"),
@@ -562,7 +583,7 @@ pub struct Config {
     pub git: Option<GitConfig>,
     pub scripts: HashMap<String, String>,
     pub dependencies: HashMap<Name, Version>,
-    pub links: HashMap<Name, PathBuf>,
+    pub links: HashMap<SubpathableName, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
 }
 

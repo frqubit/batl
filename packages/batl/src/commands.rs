@@ -3,7 +3,7 @@ use crate::error::{err_resource_does_not_exist, err_script_execution_failed};
 use crate::output::{error, info, success};
 use crate::resource::batlrc::AnyBatlRc;
 use crate::resource::tomlconfig::{write_toml, TomlConfig};
-use crate::resource::{self, Name, Repository};
+use crate::resource::{self, Name, Repository, SubpathableName};
 use crate::resource::{batlrc::BatlRcLatest, BatlRc};
 use crate::utils::REGISTRY_DOMAIN;
 use colored::*;
@@ -16,6 +16,7 @@ use semver::Version;
 use std::env::current_dir;
 use std::io::Write;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub mod repository;
 
@@ -303,7 +304,7 @@ pub fn cmd_publish(name: String) -> EyreResult<()> {
 #[derive(Default)]
 pub struct CmdFetchOptions {
     pub git: bool,
-    pub local: bool
+    pub local: bool,
 }
 
 fn transfer_progress(progress: Progress<'_>) -> bool {
@@ -328,9 +329,9 @@ pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
             let name = Name::new(&name)?;
 
             let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.url_path_segments());
-        
+
             let resp = ureq::get(&url).call()?;
-        
+
             if resp.status() != 200 {
                 error(&format!(
                     "Failed to fetch repository: status code {}",
@@ -338,11 +339,11 @@ pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
                 ));
                 return Ok(());
             }
-        
+
             let body = resp.into_body().into_reader();
-        
+
             let mut tar = tar::Archive::new(body);
-        
+
             // The repository needs to be unpacked
             // to a dummy folder first, then moved
             // to its final destination
@@ -350,20 +351,20 @@ pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
             tar.unpack(&dummy_folder)?;
 
             dummy_folder
-        },
+        }
         true => {
             let dummy_folder = tempfile::tempdir()?;
 
             let mut fetch_callbacks = RemoteCallbacks::new();
             fetch_callbacks.transfer_progress(transfer_progress);
-    
+
             let mut fetch_options = FetchOptions::new();
             fetch_options.remote_callbacks(fetch_callbacks);
-    
+
             RepoBuilder::new()
                 .fetch_options(fetch_options)
                 .clone(&name, dummy_folder.path())?;
-    
+
             success("Successfully fetched repository");
 
             dummy_folder
@@ -380,8 +381,10 @@ pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
 
     let repository_path = match options.local {
         true => crate::system::repository_root(),
-        false => crate::system::fetched_repository_root()
-    }.ok_or(err_battalion_not_setup())?.join(name.path_segments_as_repository_name());
+        false => crate::system::fetched_repository_root(),
+    }
+    .ok_or(err_battalion_not_setup())?
+    .join(name.path_segments_as_repository_name());
 
     std::fs::create_dir_all(&repository_path)?;
 
@@ -614,9 +617,13 @@ pub fn cmd_auth() -> EyreResult<()> {
 pub fn cmd_link(name: String, path: PathBuf) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
-    let other = Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
 
-    repository.add_link(&other, path)?;
+    let subpath_name = SubpathableName::from_str(&name)?;
+
+    let other =
+        Repository::load(subpath_name.name().clone())?.ok_or(err_resource_does_not_exist(&name))?;
+
+    repository.add_link(&other, path, subpath_name.subpath().cloned())?;
 
     success("Added new link");
 
@@ -627,7 +634,7 @@ pub fn cmd_unlink(name: String) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    repository.remove_link(&Name::new(&name)?)?;
+    repository.remove_link(&SubpathableName::from_str(&name)?)?;
 
     success(&format!("Removed link for {name}"));
     Ok(())

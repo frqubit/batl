@@ -316,6 +316,101 @@ impl Serialize for Name {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SubpathableName {
+    name: Name,
+    subpath: Option<PathBuf>,
+}
+
+impl SubpathableName {
+    pub fn new(name: Name, subpath: Option<PathBuf>) -> SubpathableName {
+        SubpathableName { name, subpath }
+    }
+
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
+    pub fn subpath(&self) -> Option<&PathBuf> {
+        self.subpath.as_ref()
+    }
+}
+
+impl FromStr for SubpathableName {
+    type Err = color_eyre::eyre::Error;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some((before, after)) = s.split_once('/') {
+            let name = Name::from_str(before)?;
+            let subpath = Some(PathBuf::from(after));
+
+            return Ok(SubpathableName::new(name, subpath));
+        } else {
+            return Ok(SubpathableName::new(Name::from_str(s)?, None));
+        }
+    }
+}
+
+impl Display for SubpathableName {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        self.name.fmt(f)?;
+
+        if let Some(subpath) = &self.subpath {
+            f.write_str("/")?;
+            f.write_str(&subpath.to_string_lossy())?;
+        }
+
+        Ok(())
+    }
+}
+
+#[expect(clippy::missing_trait_methods, reason = "serde autoimpls methods")]
+impl<'de> Deserialize<'de> for SubpathableName {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        /// serde visitor for a battalion resource name
+        struct SubpathableNameVisitor;
+
+        impl Visitor<'_> for SubpathableNameVisitor {
+            type Value = SubpathableName;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+                formatter.write_str("A valid subpathable resource name")
+            }
+
+            #[expect(clippy::map_err_ignore, reason = "err specifics not important")]
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                SubpathableName::from_str(v).map_err(|_| {
+                    de::Error::invalid_value(
+                        de::Unexpected::Str(v),
+                        &"A valid subpathable resource name",
+                    )
+                })
+            }
+        }
+
+        deserializer.deserialize_str(SubpathableNameVisitor)
+    }
+}
+
+impl Serialize for SubpathableName {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&format!("{self}"))
+    }
+}
+
 /// Creates a symlink directory, OS independent
 ///
 /// # Errors

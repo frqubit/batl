@@ -2,7 +2,7 @@
 #![allow(clippy::exhaustive_enums)]
 
 use crate::error::EyreResult;
-use crate::resource::Name;
+use crate::resource::{Name, SubpathableName};
 use batl_macros::{environment_struct_impl, versioned_identical};
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -29,9 +29,10 @@ versioned_identical!("0.2.2" => "0.3.0" : [
     Repository,
     Scripts,
     Restrict,
-    Restrictor,
-    Links
+    Restrictor
 ]);
+
+pub type Links0_3_0 = HashMap<SubpathableName, PathBuf>;
 
 pub type Dependencies0_3_0 = HashMap<Name, Version>;
 
