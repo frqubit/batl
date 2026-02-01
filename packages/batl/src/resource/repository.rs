@@ -513,10 +513,13 @@ impl Repository {
 
         if let Some(gitignore_batlpos) = gitignore_batl_line {
             // Battalion is already in gitignore
-            gitignore_lines.insert(gitignore_batlpos + 1, path.to_string_lossy().into());
+            gitignore_lines.insert(
+                gitignore_batlpos + 1,
+                format!("/{}", path.to_string_lossy()),
+            );
         } else {
             gitignore_lines.push("# batl.gitignore begin DO NOT MODIFY".into());
-            gitignore_lines.push(path.to_string_lossy().into());
+            gitignore_lines.push(format!("/{}", path.to_string_lossy()));
             gitignore_lines.push("# batl.gitignore end DO NOT MODIFY".into());
         }
 
@@ -552,7 +555,11 @@ impl Repository {
                 .iter()
                 .skip(gitignore_batl_begin)
                 .enumerate()
-                .find(|(_, v)| *v == &searching || *v == "# batl.gitignore end DO NOT MODIFY");
+                .find(|(_, v)| {
+                    *v == &searching
+                        || *v == &format!("/{}", path.to_string_lossy())
+                        || *v == "# batl.gitignore end DO NOT MODIFY"
+                });
 
             if let Some((position, value)) = found {
                 if value == "# batl.gitignore end DO NOT MODIFY" {
