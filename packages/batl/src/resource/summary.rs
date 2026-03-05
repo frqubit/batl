@@ -1,19 +1,18 @@
-use crate::{error::err_resource_does_not_exist, EyreResult};
-use std::collections::{HashMap, HashSet};
+use crate::{
+    error::err_resource_does_not_exist, resource::tomlconfig::Environment0_3_0, EyreResult,
+};
+use std::collections::HashSet;
 
 use semver::Version;
+use serde::{Deserialize, Serialize};
 
-use super::{
-    restrict::{Condition, Settings as RestrictSettings},
-    Name, Repository,
-};
+use super::{Name, Repository};
 
 #[non_exhaustive]
 pub struct RepositorySummary {
     pub name: Name,
     pub version: Version,
     pub dependencies: RecursedRepositoryDeps,
-    pub restrict: HashMap<Condition, RestrictSettings>,
 }
 
 impl RepositorySummary {
@@ -25,12 +24,12 @@ impl RepositorySummary {
             name: config.name,
             version: config.version,
             dependencies: deps,
-            restrict: config.restrict,
         })
     }
 }
 
 #[non_exhaustive]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Eq)]
 pub struct RecursedRepositoryDeps(Vec<(Name, Version)>);
 
 impl IntoIterator for RecursedRepositoryDeps {
@@ -73,4 +72,41 @@ impl RecursedRepositoryDeps {
 
         Ok(Self(deps.into_iter().collect()))
     }
+}
+
+#[non_exhaustive]
+pub enum AnySummaryFile {
+    V0_3_0(SummaryFile0_3_0),
+}
+
+// FILE VERSIONS //
+pub type SummaryFileLatest = SummaryFile0_3_0;
+
+impl From<RepositorySummary> for SummaryFileLatest {
+    fn from(value: RepositorySummary) -> Self {
+        Self {
+            environment: Environment0_3_0::default(),
+            name: value.name,
+            version: value.version,
+            dependencies: value.dependencies,
+        }
+    }
+}
+
+impl From<SummaryFileLatest> for RepositorySummary {
+    fn from(value: SummaryFileLatest) -> Self {
+        Self {
+            name: value.name,
+            version: value.version,
+            dependencies: value.dependencies,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct SummaryFile0_3_0 {
+    pub environment: Environment0_3_0,
+    pub name: Name,
+    pub version: Version,
+    pub dependencies: RecursedRepositoryDeps,
 }

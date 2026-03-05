@@ -73,6 +73,8 @@ enum SubCommand {
     Unlink { name: String },
     #[command(about = "Lists dependencies of the current repository")]
     Deps,
+    #[command(about = "Generates batl.lock")]
+    Lock,
     #[command(external_subcommand)]
     ExecShorthand(Vec<String>),
 }
@@ -106,6 +108,7 @@ fn main() -> EyreResult<()> {
         SubCommand::Link { name, path } => commands::cmd_link(name, path),
         SubCommand::Unlink { name } => commands::cmd_unlink(name),
         SubCommand::Deps => commands::cmd_deps(),
+        SubCommand::Lock => commands::cmd_lock(),
         SubCommand::ExecShorthand(args) => cmd_execshorthand(args),
     };
 

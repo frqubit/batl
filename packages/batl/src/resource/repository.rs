@@ -7,6 +7,7 @@ use crate::error::{
     err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
     err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
+use crate::resource::summary::SummaryFileLatest;
 use crate::resource::SubpathableName;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -253,6 +254,15 @@ impl Repository {
         let toml = TomlConfigLatest::from(self.config.clone());
 
         tomlconfig::write_toml(&self.path().to_path_buf().join("batl.toml"), &toml)
+    }
+
+    #[inline]
+    pub fn lock(&self) -> EyreResult<()> {
+        let summary_file = SummaryFileLatest::from(self.summarize()?);
+
+        tomlconfig::write_toml(&self.path().to_path_buf().join("batl.lock"), &summary_file)?;
+
+        Ok(())
     }
 
     /// Loads a repository from an absolute path. This

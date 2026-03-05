@@ -1,0 +1,6 @@
+name = "battalion.batl"
+version = "0.1.0"
+dependencies = [["battalion.batl.lambda", "0.1.0"]]
+
+[environment]
+version = "0.3.0"

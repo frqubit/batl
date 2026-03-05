@@ -653,3 +653,14 @@ pub fn cmd_deps() -> EyreResult<()> {
 
     Ok(())
 }
+
+pub fn cmd_lock() -> EyreResult<()> {
+    let repository = Repository::locate_then_load(&current_dir()?)?
+        .ok_or(err_not_executed_inside_repository())?;
+
+    repository.lock()?;
+
+    success("Repository locked");
+
+    Ok(())
+}
