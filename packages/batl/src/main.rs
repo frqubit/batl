@@ -26,6 +26,8 @@ struct Cli {
 enum SubCommand {
     #[command(about = "[DEPRECATED 0.3.0] Old repository command aliases")]
     Repository(SubCmdArgs<commands::repository::Commands>),
+    #[command(about = "Low level commands")]
+    Ll(SubCmdArgs<commands::ll::Commands>),
     #[command(about = "Lists present battalion repositories")]
     Ls {
         filter: Option<String>,
@@ -90,6 +92,7 @@ fn main() -> EyreResult<()> {
 
     let result = match cli.subcmd {
         SubCommand::Repository(args) => commands::repository::run(args.subcmd),
+        SubCommand::Ll(args) => commands::ll::run(args.subcmd),
         SubCommand::Setup => commands::cmd_setup(),
         SubCommand::Add { name } => commands::cmd_add(name),
         SubCommand::Remove { name } => commands::cmd_remove(name),

@@ -7,12 +7,14 @@ use crate::error::{
     err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
     err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
-use crate::resource::summary::SummaryFileLatest;
+use crate::resource::summary::{HashId, SummaryFileLatest};
 use crate::resource::SubpathableName;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::env::current_dir;
+use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
@@ -589,6 +591,66 @@ impl Repository {
 
     pub fn summarize(&self) -> EyreResult<RepositorySummary> {
         RepositorySummary::of_repository(self)
+    }
+
+    pub fn gen_hashid(&self) -> EyreResult<HashId> {
+        let mut walk_builder = ignore::WalkBuilder::new(self.path());
+
+        if let Some(git) = self.config().git.clone() {
+            walk_builder.add_ignore(git.path);
+        }
+
+        walk_builder.add_custom_ignore_filename("batl.ignore");
+
+        let walk = walk_builder.build();
+
+        let mut hasher = Sha256::new();
+        let mut files: Vec<(String, String)> = vec![];
+
+        for result in walk {
+            let entry = result?;
+
+            let abs_path = entry.path();
+
+            if abs_path.is_dir() {
+                continue;
+            }
+
+            let rel_path_opt = pathdiff::diff_paths(abs_path, self.path());
+
+            if let Some(rel_path) = rel_path_opt {
+                let filename = rel_path.to_string_lossy().to_string();
+                let mut file_hasher = Sha256::new();
+                let mut buffer = [0; 1024];
+
+                let mut file = File::open(abs_path)?;
+                while let Ok(n) = file.read(&mut buffer) {
+                    if n == 0 {
+                        // EOF
+                        break;
+                    }
+
+                    file_hasher.update(&buffer[..n]);
+                }
+
+                let file_hash = format!("{:X}", file_hasher.finalize());
+
+                let pos = files.iter().position(|file| file.0 > filename);
+                if let Some(pos) = pos {
+                    files.insert(pos, (filename, file_hash));
+                } else {
+                    files.push((filename, file_hash));
+                }
+            }
+        }
+
+        for (filename, hash) in files.iter() {
+            hasher.update(format!("{filename} {hash}").as_bytes());
+        }
+
+        let hash = format!("{:X}", hasher.finalize());
+
+        Ok(hash)
     }
 }
 

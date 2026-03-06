@@ -18,6 +18,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+pub mod ll;
 pub mod repository;
 
 fn print_versions(name: Name) -> EyreResult<()> {
