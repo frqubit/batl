@@ -7,6 +7,7 @@ use crate::error::{
     err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
     err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
+use crate::resource::source::RepositorySource;
 use crate::resource::summary::{HashId, SummaryFileLatest};
 use crate::resource::SubpathableName;
 use semver::Version;
@@ -234,6 +235,7 @@ impl Repository {
             dependencies: None,
             links: None,
             restrict: Some(restrictions),
+            sources: None,
         };
 
         tomlconfig::write_toml(&repo_path.join("batl.toml"), &toml)?;
@@ -664,6 +666,7 @@ pub struct Config {
     pub dependencies: HashMap<Name, Version>,
     pub links: HashMap<SubpathableName, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
+    pub sources: Vec<RepositorySource>,
 }
 
 #[derive(Clone)]
@@ -718,7 +721,7 @@ impl From<AnyTomlConfig> for TomlConfigLatest {
 // CONFIG VERSIONS //
 pub type TomlConfigLatest = TomlConfig0_3_0;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct TomlConfig0_3_0 {
     pub environment: tomlconfig::Environment0_3_0,
     pub repository: tomlconfig::Repository0_3_0,
@@ -726,6 +729,7 @@ pub struct TomlConfig0_3_0 {
     pub dependencies: Option<tomlconfig::Dependencies0_3_0>,
     pub links: Option<tomlconfig::Links0_3_0>,
     pub restrict: Option<tomlconfig::Restrict0_3_0>,
+    pub sources: Option<tomlconfig::Sources0_3_0>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -757,6 +761,7 @@ impl From<TomlConfig0_2_2> for TomlConfigLatest {
             dependencies,
             links: None,
             restrict: value.restrict,
+            sources: None,
         }
     }
 }
@@ -842,6 +847,20 @@ impl From<TomlConfigLatest> for Config {
             .map(|(k, v)| (k.into(), v.into()))
             .collect::<HashMap<_, _>>();
 
+        let sources = value
+            .sources
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| RepositorySource {
+                handler: v.handler,
+                attrs: v
+                    .extra
+                    .into_iter()
+                    .filter_map(|(k, v)| tomlconfig::toml_value_to_string(v).map(|v| (k, v)))
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+
         Self {
             name: value.repository.name,
             version: value.repository.version,
@@ -850,6 +869,7 @@ impl From<TomlConfigLatest> for Config {
             dependencies: value.dependencies.unwrap_or_default(),
             links: value.links.unwrap_or_default(),
             restrict,
+            sources,
         }
     }
 }
@@ -868,6 +888,15 @@ impl From<Config> for TomlConfigLatest {
             .map(|(k, v)| (k.into(), v.into()))
             .collect::<HashMap<_, _>>();
 
+        let sources = value
+            .sources
+            .into_iter()
+            .map(|v| tomlconfig::Source0_3_0 {
+                handler: v.handler,
+                extra: v.attrs.into_iter().map(|(k, v)| (k, v.into())).collect(),
+            })
+            .collect::<Vec<_>>();
+
         Self {
             environment: tomlconfig::EnvironmentLatest::default(),
             repository: tomlconfig::RepositoryLatest {
@@ -879,6 +908,7 @@ impl From<Config> for TomlConfigLatest {
             dependencies: tomlconfig::hashmap_to_option_hashmap(value.dependencies),
             links: tomlconfig::hashmap_to_option_hashmap(value.links),
             restrict: tomlconfig::hashmap_to_option_hashmap(restrict),
+            sources: tomlconfig::vec_to_option_vec(sources),
         }
     }
 }

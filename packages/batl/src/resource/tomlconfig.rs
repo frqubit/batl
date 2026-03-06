@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
+use toml::Value;
 
 environment_struct_impl!("0.2.0");
 environment_struct_impl!("0.2.1");
@@ -22,7 +23,8 @@ versioned_identical!("0.3.0" => "latest" : [
     Dependencies,
     Restrict,
     Restrictor,
-    Links
+    Links,
+    Sources
 ]);
 
 versioned_identical!("0.2.2" => "0.3.0" : [
@@ -33,8 +35,15 @@ versioned_identical!("0.2.2" => "0.3.0" : [
 ]);
 
 pub type Links0_3_0 = HashMap<SubpathableName, PathBuf>;
-
+pub type Sources0_3_0 = Vec<Source0_3_0>;
 pub type Dependencies0_3_0 = HashMap<Name, Version>;
+
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Source0_3_0 {
+    pub handler: Name,
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Repository0_2_2 {
@@ -118,6 +127,26 @@ pub fn hashmap_to_option_hashmap<K, V, S>(map: HashMap<K, V, S>) -> Option<HashM
         None
     } else {
         Some(map)
+    }
+}
+
+#[inline]
+#[must_use]
+pub fn vec_to_option_vec<T>(vec: Vec<T>) -> Option<Vec<T>> {
+    if vec.is_empty() {
+        None
+    } else {
+        Some(vec)
+    }
+}
+
+pub fn toml_value_to_string(val: Value) -> Option<String> {
+    match val {
+        Value::String(s) => Some(s),
+        Value::Integer(i) => Some(format!("{i}")),
+        Value::Float(f) => Some(format!("{f}")),
+        Value::Boolean(b) => Some(format!("{b}")),
+        _ => None,
     }
 }
 

@@ -10,6 +10,7 @@ pub mod archive;
 pub mod batlrc;
 pub mod repository;
 pub mod restrict;
+pub mod source;
 pub mod summary;
 pub mod tomlconfig;
 
