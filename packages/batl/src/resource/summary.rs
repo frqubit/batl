@@ -14,7 +14,6 @@ pub type HashId = String;
 pub struct RepositorySummary {
     pub name: Name,
     pub version: Version,
-    pub hashid: String,
     pub dependencies: RecursedRepositoryDeps,
 }
 
@@ -22,12 +21,10 @@ impl RepositorySummary {
     pub fn of_repository(value: &Repository) -> EyreResult<Self> {
         let deps = RecursedRepositoryDeps::of_repository(value)?;
         let config = value.config().clone();
-        let hashid = value.gen_hashid()?;
 
         Ok(Self {
             name: config.name,
             version: config.version,
-            hashid,
             dependencies: deps,
         })
     }
@@ -93,7 +90,6 @@ impl From<RepositorySummary> for SummaryFileLatest {
             environment: Environment0_3_0::default(),
             name: value.name,
             version: value.version,
-            hashid: value.hashid,
             dependencies: value.dependencies,
         }
     }
@@ -104,7 +100,6 @@ impl From<SummaryFileLatest> for RepositorySummary {
         Self {
             name: value.name,
             version: value.version,
-            hashid: value.hashid,
             dependencies: value.dependencies,
         }
     }
@@ -115,6 +110,5 @@ pub struct SummaryFile0_3_0 {
     pub environment: Environment0_3_0,
     pub name: Name,
     pub version: Version,
-    pub hashid: HashId,
     pub dependencies: RecursedRepositoryDeps,
 }

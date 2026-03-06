@@ -1,7 +1,10 @@
 use std::env::current_dir;
 
 use crate::{
-    error::err_not_executed_inside_repository, output::success, resource::Repository, EyreResult,
+    error::err_not_executed_inside_repository,
+    output::{info, success},
+    resource::Repository,
+    EyreResult,
 };
 use clap::Subcommand;
 
@@ -20,7 +23,8 @@ fn cmd_hashid() -> EyreResult<()> {
     let repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    repository.gen_hashid()?;
+    let hash = repository.gen_hashid()?;
+    println!("Hash: {hash}");
 
     Ok(())
 }
