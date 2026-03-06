@@ -1,6 +1,10 @@
 name = "battalion.batl"
 version = "0.1.0"
-dependencies = [["battalion.batl.lambda", "0.1.0"]]
 
 [environment]
 version = "0.3.0"
+
+[[dependencies]]
+name = "battalion.batl.lambda"
+version = "0.1.0"
+hashid = "7B43F5FE84E13415E9F6C5A5C87DD737EC7A5462ABB39867275FE5263FB92103"

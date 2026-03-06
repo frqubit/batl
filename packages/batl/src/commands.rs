@@ -648,7 +648,7 @@ pub fn cmd_deps() -> EyreResult<()> {
     let summary = repository.summarize()?;
 
     for dep in summary.dependencies.into_iter() {
-        let name = dep.0.with_version(dep.1);
+        let name = dep.name.with_version(dep.version);
         println!("{name}");
     }
 
