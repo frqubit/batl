@@ -851,14 +851,7 @@ impl From<TomlConfigLatest> for Config {
             .sources
             .unwrap_or_default()
             .into_iter()
-            .map(|v| RepositorySource {
-                handler: v.handler,
-                attrs: v
-                    .extra
-                    .into_iter()
-                    .filter_map(|(k, v)| tomlconfig::toml_value_to_string(v).map(|v| (k, v)))
-                    .collect(),
-            })
+            .map(|v| RepositorySource::from(v))
             .collect::<Vec<_>>();
 
         Self {
@@ -891,10 +884,7 @@ impl From<Config> for TomlConfigLatest {
         let sources = value
             .sources
             .into_iter()
-            .map(|v| tomlconfig::Source0_3_0 {
-                handler: v.handler,
-                extra: v.attrs.into_iter().map(|(k, v)| (k, v.into())).collect(),
-            })
+            .map(|v| tomlconfig::SourceLatest::from(v))
             .collect::<Vec<_>>();
 
         Self {

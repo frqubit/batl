@@ -24,7 +24,8 @@ versioned_identical!("0.3.0" => "latest" : [
     Restrict,
     Restrictor,
     Links,
-    Sources
+    Sources,
+    Source
 ]);
 
 versioned_identical!("0.2.2" => "0.3.0" : [
