@@ -1,11 +1,6 @@
 use std::env::current_dir;
 
-use crate::{
-    error::err_not_executed_inside_repository,
-    output::{info, success},
-    resource::Repository,
-    EyreResult,
-};
+use crate::{error::err_not_executed_inside_repository, resource::Repository, EyreResult};
 use clap::Subcommand;
 
 #[derive(Subcommand)]
