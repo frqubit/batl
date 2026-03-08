@@ -236,6 +236,7 @@ impl Repository {
             links: None,
             restrict: Some(restrictions),
             sources: None,
+            actions: None,
         };
 
         tomlconfig::write_toml(&repo_path.join("batl.toml"), &toml)?;
@@ -667,6 +668,7 @@ pub struct Config {
     pub links: HashMap<SubpathableName, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
     pub sources: Vec<RepositorySource>,
+    pub actions: HashMap<String, PathBuf>,
 }
 
 #[derive(Clone)]
@@ -730,6 +732,7 @@ pub struct TomlConfig0_3_0 {
     pub links: Option<tomlconfig::Links0_3_0>,
     pub restrict: Option<tomlconfig::Restrict0_3_0>,
     pub sources: Option<tomlconfig::Sources0_3_0>,
+    pub actions: Option<tomlconfig::Actions0_3_0>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -762,6 +765,7 @@ impl From<TomlConfig0_2_2> for TomlConfigLatest {
             links: None,
             restrict: value.restrict,
             sources: None,
+            actions: None,
         }
     }
 }
@@ -863,6 +867,7 @@ impl From<TomlConfigLatest> for Config {
             links: value.links.unwrap_or_default(),
             restrict,
             sources,
+            actions: value.actions.unwrap_or_default(),
         }
     }
 }
@@ -899,6 +904,7 @@ impl From<Config> for TomlConfigLatest {
             links: tomlconfig::hashmap_to_option_hashmap(value.links),
             restrict: tomlconfig::hashmap_to_option_hashmap(restrict),
             sources: tomlconfig::vec_to_option_vec(sources),
+            actions: tomlconfig::hashmap_to_option_hashmap(value.actions),
         }
     }
 }

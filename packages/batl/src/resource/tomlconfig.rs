@@ -25,7 +25,8 @@ versioned_identical!("0.3.0" => "latest" : [
     Restrictor,
     Links,
     Sources,
-    Source
+    Source,
+    Actions
 ]);
 
 versioned_identical!("0.2.2" => "0.3.0" : [
@@ -38,6 +39,7 @@ versioned_identical!("0.2.2" => "0.3.0" : [
 pub type Links0_3_0 = HashMap<SubpathableName, PathBuf>;
 pub type Sources0_3_0 = Vec<Source0_3_0>;
 pub type Dependencies0_3_0 = HashMap<Name, Version>;
+pub type Actions0_3_0 = HashMap<String, PathBuf>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct Source0_3_0 {
