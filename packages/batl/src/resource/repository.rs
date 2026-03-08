@@ -208,21 +208,21 @@ impl Repository {
             "echo \"No build targets\" && exit 1".to_owned(),
         );
 
-        let mut restrictions = HashMap::new();
+        // let mut restrictions = HashMap::new();
 
-        #[cfg(unix)]
-        let restrictor = tomlconfig::RestrictorLatest::Unix;
+        // #[cfg(unix)]
+        // let restrictor = tomlconfig::RestrictorLatest::Unix;
 
-        #[cfg(target_os = "windows")]
-        let restrictor = tomlconfig::RestrictorLatest::Windows;
+        // #[cfg(target_os = "windows")]
+        // let restrictor = tomlconfig::RestrictorLatest::Windows;
 
-        restrictions.insert(
-            restrictor,
-            tomlconfig::RestrictorSettings0_2_2 {
-                include: Some(tomlconfig::RestrictRequirement0_2_2::Require),
-                dependencies: None,
-            },
-        );
+        // restrictions.insert(
+        //     restrictor,
+        //     tomlconfig::RestrictorSettings0_2_2 {
+        //         include: Some(tomlconfig::RestrictRequirement0_2_2::Require),
+        //         dependencies: None,
+        //     },
+        // );
 
         let toml = TomlConfigLatest {
             environment: tomlconfig::EnvironmentLatest::default(),
@@ -234,7 +234,7 @@ impl Repository {
             scripts: Some(scripts),
             dependencies: None,
             links: None,
-            restrict: Some(restrictions),
+            restrict: None,
             sources: None,
             actions: None,
         };
