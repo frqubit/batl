@@ -47,6 +47,10 @@ pub fn err_action_impossible_while_condition(ing_action: &str, condition: &str) 
     eyre!("{ing_action} cannot be performed while {condition}")
 }
 
+pub fn err_action_script_failed(action_err: &str) -> Report {
+    eyre!("Action script failed: {action_err}")
+}
+
 // #[derive(Debug, Error)]
 // #[non_exhaustive]
 // pub enum ReadConfigError {

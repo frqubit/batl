@@ -655,6 +655,10 @@ impl Repository {
 
         Ok(hash)
     }
+
+    pub fn run_action_on_repository(&self, action: String, target: &Repository) -> EyreResult<()> {
+        crate::action::run_action(&self, target, action)
+    }
 }
 
 #[derive(Clone)]

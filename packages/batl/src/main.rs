@@ -5,6 +5,7 @@ use color_eyre::{eyre::eyre, Result as EyreResult};
 use error::err_not_executed_inside_repository;
 use resource::Repository;
 
+mod action;
 mod commands;
 mod error;
 mod output;
