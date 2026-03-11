@@ -7,6 +7,7 @@ use crate::error::{
     err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
     err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
 };
+use crate::output::warn;
 use crate::resource::source::RepositorySource;
 use crate::resource::summary::{HashId, SummaryFileLatest};
 use crate::resource::SubpathableName;
@@ -229,14 +230,13 @@ impl Repository {
             repository: tomlconfig::RepositoryLatest {
                 name: name.clone(),
                 version: semver::Version::new(0, 1, 0),
-                git: options.git,
+                actions: None,
             },
             scripts: Some(scripts),
             dependencies: None,
             links: None,
             restrict: None,
             sources: None,
-            actions: None,
         };
 
         tomlconfig::write_toml(&repo_path.join("batl.toml"), &toml)?;
@@ -340,10 +340,6 @@ impl Repository {
     #[inline]
     pub fn archive_gen(&self) -> EyreResult<Archive> {
         let mut walk_builder = ignore::WalkBuilder::new(self.path());
-
-        if let Some(git) = self.config().git.clone() {
-            walk_builder.add_ignore(git.path);
-        }
 
         walk_builder.add_custom_ignore_filename("batl.ignore");
 
@@ -599,10 +595,6 @@ impl Repository {
     pub fn gen_hashid(&self) -> EyreResult<HashId> {
         let mut walk_builder = ignore::WalkBuilder::new(self.path());
 
-        if let Some(git) = self.config().git.clone() {
-            walk_builder.add_ignore(git.path);
-        }
-
         walk_builder.add_custom_ignore_filename("batl.ignore");
 
         let walk = walk_builder.build();
@@ -655,10 +647,6 @@ impl Repository {
 
         Ok(hash)
     }
-
-    pub fn run_action_on_repository(&self, action: String, target: &Repository) -> EyreResult<()> {
-        crate::action::run_action(&self, target, action)
-    }
 }
 
 #[derive(Clone)]
@@ -666,20 +654,12 @@ impl Repository {
 pub struct Config {
     pub name: Name,
     pub version: Version,
-    pub git: Option<GitConfig>,
     pub scripts: HashMap<String, String>,
     pub dependencies: HashMap<Name, Version>,
     pub links: HashMap<SubpathableName, PathBuf>,
     pub restrict: HashMap<Condition, RestrictSettings>,
     pub sources: Vec<RepositorySource>,
-    pub actions: HashMap<String, PathBuf>,
-}
-
-#[derive(Clone)]
-#[non_exhaustive]
-pub struct GitConfig {
-    pub url: String,
-    pub path: String,
+    pub actions_filepath: Option<PathBuf>,
 }
 
 #[non_exhaustive]
@@ -736,7 +716,6 @@ pub struct TomlConfig0_3_0 {
     pub links: Option<tomlconfig::Links0_3_0>,
     pub restrict: Option<tomlconfig::Restrict0_3_0>,
     pub sources: Option<tomlconfig::Sources0_3_0>,
-    pub actions: Option<tomlconfig::Actions0_3_0>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -761,15 +740,31 @@ impl From<TomlConfig0_2_2> for TomlConfigLatest {
                 .collect()
         });
 
+        if value.repository.git.is_some() {
+            warn("Your 0.2.2 tomlconfig contains a `git` link in the repository field. Git links/fetches are now handled using sources. Your `git` link will be saved as a source, but double check the saved value to ensure it is correct.");
+        }
+
         Self {
             environment: tomlconfig::EnvironmentLatest::default(),
-            repository: value.repository,
+            repository: tomlconfig::RepositoryLatest {
+                name: value.repository.name,
+                version: value.repository.version,
+                actions: None,
+            },
             scripts: value.scripts,
             dependencies,
             links: None,
             restrict: value.restrict,
-            sources: None,
-            actions: None,
+            sources: value.repository.git.map(|repo_git| {
+                let mut hashmap_with_url_and_path = HashMap::new();
+                hashmap_with_url_and_path.insert("url".to_string(), repo_git.url.into());
+                hashmap_with_url_and_path.insert("path".to_string(), repo_git.path.into());
+
+                vec![tomlconfig::SourceLatest {
+                    handler: Name::new("battalion.source.git.legacy").unwrap(),
+                    extra: hashmap_with_url_and_path,
+                }]
+            }),
         }
     }
 }
@@ -843,11 +838,6 @@ impl From<TomlConfig0_2_0> for TomlConfig0_2_2 {
 impl From<TomlConfigLatest> for Config {
     #[inline]
     fn from(value: TomlConfigLatest) -> Self {
-        let git = value.repository.git.map(|toml| GitConfig {
-            url: toml.url,
-            path: toml.path,
-        });
-
         let restrict = value
             .restrict
             .unwrap_or_default()
@@ -865,13 +855,12 @@ impl From<TomlConfigLatest> for Config {
         Self {
             name: value.repository.name,
             version: value.repository.version,
-            git,
             scripts: value.scripts.unwrap_or_default(),
             dependencies: value.dependencies.unwrap_or_default(),
             links: value.links.unwrap_or_default(),
             restrict,
             sources,
-            actions: value.actions.unwrap_or_default(),
+            actions_filepath: value.repository.actions,
         }
     }
 }
@@ -879,11 +868,6 @@ impl From<TomlConfigLatest> for Config {
 impl From<Config> for TomlConfigLatest {
     #[inline]
     fn from(value: Config) -> Self {
-        let git = value.git.map(|conf| tomlconfig::RepositoryGit0_2_2 {
-            url: conf.url,
-            path: conf.path,
-        });
-
         let restrict = value
             .restrict
             .into_iter()
@@ -901,14 +885,13 @@ impl From<Config> for TomlConfigLatest {
             repository: tomlconfig::RepositoryLatest {
                 name: value.name,
                 version: value.version,
-                git,
+                actions: value.actions_filepath,
             },
             scripts: tomlconfig::hashmap_to_option_hashmap(value.scripts),
             dependencies: tomlconfig::hashmap_to_option_hashmap(value.dependencies),
             links: tomlconfig::hashmap_to_option_hashmap(value.links),
             restrict: tomlconfig::hashmap_to_option_hashmap(restrict),
             sources: tomlconfig::vec_to_option_vec(sources),
-            actions: tomlconfig::hashmap_to_option_hashmap(value.actions),
         }
     }
 }

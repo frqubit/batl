@@ -26,7 +26,6 @@ pub enum Commands {
         #[arg(short = 'o')]
         name: String,
     },
-    Scaffold,
     // Env {
     // 	#[arg(short = 'n')]
     // 	name: Option<String>,
@@ -57,7 +56,6 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         Commands::Init { name } => super::cmd_init(name),
         Commands::Delete { name } => super::cmd_delete(name),
         Commands::Clone { url, name } => cmd_clone(url, name),
-        Commands::Scaffold => cmd_scaffold(),
         // Commands::Env { name, var } => {
         // 	cmd_env(name, var)
         // },
@@ -85,30 +83,30 @@ fn cmd_clone(url: String, name: String) -> EyreResult<()> {
     Ok(())
 }
 
-fn cmd_scaffold() -> EyreResult<()> {
-    let repository = Repository::locate_then_load(&current_dir()?)?
-        .ok_or(err_not_executed_inside_repository())?;
+// fn cmd_scaffold() -> EyreResult<()> {
+//     let repository = Repository::locate_then_load(&current_dir()?)?
+//         .ok_or(err_not_executed_inside_repository())?;
 
-    let config = repository.config();
+//     let config = repository.config();
 
-    if let Some(git) = config.git.clone() {
-        let git_path = repository.path().join(git.path);
+//     if let Some(git) = config.git.clone() {
+//         let git_path = repository.path().join(git.path);
 
-        let mut fetch_callbacks = RemoteCallbacks::new();
-        fetch_callbacks.transfer_progress(transfer_progress);
+//         let mut fetch_callbacks = RemoteCallbacks::new();
+//         fetch_callbacks.transfer_progress(transfer_progress);
 
-        let mut fetch_options = FetchOptions::new();
-        fetch_options.remote_callbacks(fetch_callbacks);
+//         let mut fetch_options = FetchOptions::new();
+//         fetch_options.remote_callbacks(fetch_callbacks);
 
-        RepoBuilder::new()
-            .fetch_options(fetch_options)
-            .clone(&git.url, &git_path)?;
+//         RepoBuilder::new()
+//             .fetch_options(fetch_options)
+//             .clone(&git.url, &git_path)?;
 
-        success("Successfully scaffolded repository");
-    }
+//         success("Successfully scaffolded repository");
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 fn transfer_progress(progress: Progress<'_>) -> bool {
     let percentage = progress.received_objects() as f64 / progress.total_objects() as f64;
