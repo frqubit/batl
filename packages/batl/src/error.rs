@@ -51,6 +51,10 @@ pub fn err_action_script_failed(action_err: &str) -> Report {
     eyre!("Action script failed: {action_err}")
 }
 
+pub fn err_theoretical() -> Report {
+    eyre!("This error is not checked for and should be nonsensical, but is theoretically possible. Please report.")
+}
+
 // #[derive(Debug, Error)]
 // #[non_exhaustive]
 // pub enum ReadConfigError {

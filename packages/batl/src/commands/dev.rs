@@ -1,9 +1,13 @@
+use rand::Rng;
 use std::{collections::HashMap, env::current_dir};
 
 use crate::{
     action::DownloadAction,
-    error::err_not_executed_inside_repository,
-    resource::{source::RepositorySource, Name, Repository},
+    error::{
+        err_internal_structure_malformed, err_not_executed_inside_repository,
+        err_resource_does_not_exist, err_theoretical,
+    },
+    resource::{repository::CreateRepositoryOptions, source::RepositorySource, Name, Repository},
     EyreResult,
 };
 use clap::Subcommand;
@@ -12,14 +16,14 @@ use clap::Subcommand;
 pub enum Commands {
     HashId,
     Sources,
-    DownloadAct,
+    Download { name: Name, repository: String },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
-        Commands::DownloadAct => cmd_download_act(),
+        Commands::Download { name, repository } => cmd_download(name, repository),
     }
 }
 
@@ -44,27 +48,57 @@ fn cmd_sources() -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_download_act() -> EyreResult<()> {
-    let repository = Repository::locate_then_load(&current_dir()?)?
-        .ok_or(err_not_executed_inside_repository())?;
+pub fn cmd_download(name: Name, repository_str: String) -> EyreResult<()> {
+    let repository =
+        Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
     let mut attrs = HashMap::new();
-    attrs.insert(
-        "url".to_string(),
-        "https://github.com/frqubit/batl".to_string(),
-    );
+    attrs.insert("repository".to_string(), repository_str);
 
     let source = RepositorySource {
         handler: Name::new("battalion.source.github")?,
         attrs,
     };
 
+    let batl_gen_path = crate::system::gen_root().unwrap();
+    let rand_code = rand::rng()
+        .random_iter::<u32>()
+        .take(8)
+        .map(|v| char::from_u32('A' as u32 + v % 26).unwrap())
+        .collect::<String>();
+
+    let tempdir_path = batl_gen_path.join("temp").join(rand_code);
+    let tempdir = std::fs::create_dir_all(&tempdir_path);
+
     let action = DownloadAction {
-        source,
-        target_repo: Some(&repository),
+        source: source.clone(),
+        download_to: tempdir_path.clone(),
     };
 
-    crate::action::run_action(&repository, action)?;
+    let data = crate::action::run_action(&repository, action);
+
+    if let Ok(data) = data {
+        let mut new_repo = Repository::create(
+            data.name.unwrap().with_version(data.version.unwrap()),
+            CreateRepositoryOptions { git: None },
+        )?;
+
+        new_repo.config_mut().sources.push(source);
+        new_repo.save()?;
+
+        for entry in std::fs::read_dir(&tempdir_path)? {
+            let entry = entry?;
+            let source_path = entry.path();
+            let file_name = source_path.file_name().ok_or_else(err_theoretical)?;
+            let destination_path = new_repo.path().join(file_name);
+
+            std::fs::rename(&source_path, &destination_path)?;
+        }
+        std::fs::remove_dir_all(tempdir_path)?;
+    } else {
+        std::fs::remove_dir_all(tempdir_path)?;
+        data?;
+    }
 
     Ok(())
 }

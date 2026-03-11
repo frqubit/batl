@@ -1,46 +1,50 @@
 use mlua::prelude::*;
+use semver::Version;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 use crate::error::{
     err_action_script_failed, err_resource_does_not_exist, err_resource_does_not_have_thing,
 };
 use crate::resource::source::RepositorySource;
-use crate::resource::{repository, Repository};
+use crate::resource::{repository, Name, Repository};
 use crate::EyreResult;
 
 pub mod batlconstant;
 
-trait BatlAction {
+pub trait BatlAction {
     type BatlActionBatlConstant: IntoLua + FromLua;
+    type BatlActionOutput;
 
     fn batl_action_batl_constant(&self, lua: &Lua) -> EyreResult<Self::BatlActionBatlConstant>;
     fn function_name(&self) -> &'static str;
+    fn as_output(
+        &self,
+        batl_constant: Self::BatlActionBatlConstant,
+    ) -> EyreResult<Self::BatlActionOutput>;
 }
 
-pub struct DownloadAction<'life> {
+pub struct DownloadAction {
     pub source: RepositorySource,
-    pub target_repo: Option<&'life repository::Repository>,
+    // pub target_repo: Option<&'life repository::Repository>,
+    pub download_to: PathBuf,
 }
 
-impl<'life> BatlAction for DownloadAction<'life> {
+impl BatlAction for DownloadAction {
     type BatlActionBatlConstant = batlconstant::DownloadActionBatlConstant;
+    type BatlActionOutput = batlconstant::BatlConstantTargetConfig;
 
     fn batl_action_batl_constant(&self, lua: &Lua) -> EyreResult<Self::BatlActionBatlConstant> {
-        let config = self.target_repo.unwrap().config();
-
         Ok(batlconstant::DownloadActionBatlConstant {
             handler: batlconstant::BatlConstantHandler {
                 data: self.source.attrs.clone(),
             },
             target: batlconstant::BatlConstantTarget {
-                execute: batlconstant::target_execute(
-                    lua,
-                    self.target_repo.map(|f| f.path()).unwrap(),
-                )?,
+                execute: batlconstant::target_execute(lua, &self.download_to)?,
                 config: batlconstant::BatlConstantTargetConfig {
-                    name: Some(config.name.clone()),
-                    version: Some(config.version.clone()),
+                    name: None,
+                    version: None,
                 },
             },
         })
@@ -49,9 +53,22 @@ impl<'life> BatlAction for DownloadAction<'life> {
     fn function_name(&self) -> &'static str {
         "download"
     }
+
+    fn as_output(
+        &self,
+        batl_constant: Self::BatlActionBatlConstant,
+    ) -> EyreResult<Self::BatlActionOutput> {
+        let config = batl_constant.target.config;
+
+        if config.name.is_none() || config.version.is_none() {
+            return Err(err_action_script_failed("name or version is none"));
+        }
+
+        Ok(config)
+    }
 }
 
-pub fn run_action<A>(action_repo: &Repository, action: A) -> EyreResult<()>
+pub fn run_action<A>(action_repo: &Repository, action: A) -> EyreResult<A::BatlActionOutput>
 where
     A: BatlAction,
 {
@@ -87,7 +104,13 @@ where
         .map_err(|e| err_action_script_failed(&e.to_string()))?;
 
     let lua_function: mlua::Function = lua.globals().get(action.function_name())?;
-    lua_function.call::<()>(action.batl_action_batl_constant(&lua)?)?;
+    lua.globals()
+        .set("__batl_global", action.batl_action_batl_constant(&lua)?)?;
+    let function_data: mlua::Value = lua.globals().get("__batl_global")?;
 
-    Ok(())
+    lua_function.call::<()>(function_data)?;
+
+    let function_data: A::BatlActionBatlConstant = lua.globals().get("__batl_global")?;
+
+    action.as_output(function_data)
 }

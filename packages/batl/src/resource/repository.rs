@@ -52,6 +52,11 @@ impl Repository {
     }
 
     #[must_use]
+    pub const fn config_mut(&mut self) -> &mut Config {
+        &mut self.config
+    }
+
+    #[must_use]
     pub const fn name(&self) -> &Name {
         &self.name
     }
@@ -144,7 +149,7 @@ impl Repository {
                 if path.exists() {
                     let mut versions = std::fs::read_dir(path)?
                         .filter_map(|ent1| ent1.ok().map(|ent2| ent2.file_name()))
-                        .map(|ver| Version::parse(&ver.to_string_lossy()))
+                        .map(|ver| Version::parse(&ver.to_string_lossy().replace("__", "+")))
                         .collect::<Result<Vec<_>, _>>()?;
                     versions.sort();
 
@@ -168,7 +173,7 @@ impl Repository {
                 if path.exists() {
                     let mut versions = std::fs::read_dir(path)?
                         .filter_map(|ent1| ent1.ok().map(|ent2| ent2.file_name()))
-                        .map(|ver| Version::parse(&ver.to_string_lossy()))
+                        .map(|ver| Version::parse(&ver.to_string_lossy().replace("__", "+")))
                         .collect::<Result<Vec<_>, _>>()?;
                     versions.sort();
 
