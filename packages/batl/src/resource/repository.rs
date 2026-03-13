@@ -4,8 +4,9 @@ use super::summary::RepositorySummary;
 use super::tomlconfig::TomlConfig;
 use super::{symlink_dir, tomlconfig, Name};
 use crate::error::{
-    err_action_impossible_while_condition, err_battalion_not_setup, err_resource_already_exists,
-    err_resource_does_not_exist, err_resource_does_not_have_thing, EyreResult,
+    err_action_impossible_while_condition, err_battalion_not_setup, err_input_requested_is_invalid,
+    err_resource_already_exists, err_resource_does_not_exist, err_resource_does_not_have_thing,
+    EyreResult,
 };
 use crate::output::warn;
 use crate::resource::source::RepositorySource;
@@ -420,19 +421,21 @@ impl Repository {
         Ok(out)
     }
 
-    pub fn add_dependency(
-        &mut self,
-        name: &Name,
-        version: Option<&Version>,
-    ) -> EyreResult<&mut Self> {
-        let version = match version {
-            Some(v) => v.clone(),
-            None => {
-                let repository = Repository::load(name.clone())?
-                    .ok_or(err_resource_does_not_exist(&name.to_string()))?;
-                repository.config().version.clone()
+    pub fn add_dependency(&mut self, repository: &Repository) -> EyreResult<&mut Self> {
+        let name = repository.name.clone();
+        let version = repository.config.version.clone();
+
+        let summary = repository.summarize()?;
+        // Make sure this does not create a cyclical loop
+        for dep in summary.dependencies {
+            if dep.name == self.name && dep.version == self.config.version {
+                let versioned_name = name.with_version(version);
+                return Err(err_input_requested_is_invalid(
+                    &versioned_name.to_string(),
+                    "adding dependency would create a cyclical loop",
+                ));
             }
-        };
+        }
 
         self.config.dependencies.insert(name.clone(), version);
         self.save()?;

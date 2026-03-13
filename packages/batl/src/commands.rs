@@ -555,7 +555,10 @@ pub fn cmd_add(name: String) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    repository.add_dependency(&name, None)?;
+    let dependency =
+        Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
+
+    repository.add_dependency(&dependency)?;
 
     success(&format!("Added dependency {name}"));
 
