@@ -14,6 +14,7 @@ use git2::{FetchOptions, Progress, RemoteCallbacks};
 use itertools::Itertools;
 use semver::Version;
 use std::env::current_dir;
+use std::env::var as env_var;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -525,26 +526,41 @@ pub fn cmd_setup() -> EyreResult<()> {
     #[cfg(target_os = "windows")]
     crate::utils::windows_symlink_perms()?;
 
-    if crate::system::batl_root().is_some() {
-        // If installed already then just update instead
-        cmd_upgrade()?;
-        return Ok(());
+    // if crate::system::batl_root().is_some() {
+    //     // If installed already then just update instead
+    //     cmd_upgrade()?;
+    //     return Ok(());
+    // }
+
+    let batl_root: PathBuf = {
+        // 1. Check BATL_ROOT environment variable
+        if let Ok(batl_root) = env_var("BATL_ROOT") {
+            Ok(PathBuf::from(batl_root))
+        } else if let Some(home_dir) = dirs::home_dir() {
+            let batl_dir = home_dir.join("battalion");
+
+            Ok(batl_dir)
+        } else {
+            Err(err_missing_system_ability("home directory"))
+        }
+    }?;
+
+    if !batl_root.join("repositories").exists() {
+        std::fs::create_dir_all(batl_root.join("repositories"))?;
     }
 
-    let batl_root = dirs::home_dir()
-        .ok_or(err_missing_system_ability("system user directory"))?
-        .join("battalion");
+    if !batl_root.join(".batlrc").exists() {
+        let batlrc = BatlRc::default();
 
-    std::fs::create_dir_all(batl_root.join("repositories"))?;
-
-    let batlrc = BatlRc::default();
-
-    write_toml(&batl_root.join(".batlrc"), &batlrc)?;
+        write_toml(&batl_root.join(".batlrc"), &batlrc)?;
+    }
 
     println!(
         "Battalion root directory created at {}",
         batl_root.display()
     );
+
+    cmd_upgrade()?;
 
     Ok(())
 }
