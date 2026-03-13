@@ -50,7 +50,11 @@ enum SubCommand {
         local: bool,
     },
     #[command(about = "Gets the system path to a repository or name of current repository")]
-    Which { name: Option<String> },
+    Which {
+        name: Option<String>,
+        #[arg(short = 'v')]
+        version: bool,
+    },
     #[command(about = "Executes a command on a repository")]
     Exec {
         #[arg(short = 'n')]
@@ -109,7 +113,7 @@ fn main() -> EyreResult<()> {
             commands::cmd_fetch(name, commands::CmdFetchOptions { git, local })
         }
         SubCommand::Exec { name, script, args } => commands::cmd_exec(name, script, args),
-        SubCommand::Which { name } => commands::cmd_which(name),
+        SubCommand::Which { name, version } => commands::cmd_which(name, version),
         SubCommand::Search { name } => commands::cmd_search(name),
         SubCommand::Link { name, path } => commands::cmd_link(name, path),
         SubCommand::Unlink { name } => commands::cmd_unlink(name),

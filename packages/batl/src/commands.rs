@@ -101,6 +101,35 @@ fn print_versions(name: Name) -> EyreResult<()> {
     Ok(())
 }
 
+fn print_files_of_repository(name: Name) -> EyreResult<()> {
+    let repository =
+        Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
+
+    let mut walk_builder = ignore::WalkBuilder::new(repository.path());
+
+    walk_builder.add_custom_ignore_filename("batl.ignore");
+
+    let walk = walk_builder.build();
+
+    for result in walk {
+        let entry = result?;
+
+        let abs_path = entry.path();
+
+        if abs_path.is_dir() {
+            continue;
+        }
+
+        let rel_path_opt = pathdiff::diff_paths(abs_path, repository.path());
+
+        if let Some(rel_path) = rel_path_opt {
+            println!("{:?}", rel_path);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
     let repo_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
 
@@ -113,6 +142,13 @@ pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
                 "empty filter",
                 "forced version requires a repository name",
             ));
+        }
+    }
+
+    if let Some(filter_str) = &filter {
+        let filter_name = Name::new(filter_str)?;
+        if filter_name.version().is_some() {
+            return print_files_of_repository(filter_name);
         }
     }
 
@@ -449,17 +485,37 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Eyre
     }
 }
 
-pub fn cmd_which(name: Option<String>) -> EyreResult<()> {
+pub fn cmd_which(name: Option<String>, version: bool) -> EyreResult<()> {
     if let Some(name) = name {
         let repository =
             Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
 
-        println!("{}", repository.path().to_string_lossy());
+        if version {
+            println!(
+                "{}",
+                repository
+                    .name()
+                    .clone()
+                    .with_version(repository.config().version.clone())
+            );
+        } else {
+            println!("{}", repository.path().to_string_lossy());
+        }
     } else {
         let repository = Repository::locate_then_load(&current_dir()?)?
             .ok_or(err_not_executed_inside_repository())?;
 
-        println!("{}", repository.name());
+        if version {
+            println!(
+                "{}",
+                repository
+                    .name()
+                    .clone()
+                    .with_version(repository.config().version.clone())
+            );
+        } else {
+            println!("{}", repository.path().to_string_lossy());
+        }
     }
 
     Ok(())
