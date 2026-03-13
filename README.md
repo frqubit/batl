@@ -10,8 +10,8 @@ batl setup
 
 # (optional) Install batlas
 batl fetch battalion.batlas
-batl exec -n battalion.batlas build
-batl exec -n battalion.batlas install
+batl battalion.batlas:build
+batl battalion.batlas:install
 ```
 
 ## Usage
@@ -24,13 +24,14 @@ batl init prototypes.awesome-project
 batl init prototypes.awesome-library
 
 # cd into the workspace
-cd $(batl workspace which prototypes.awesome-project)
+cd $(batl which prototypes.awesome-project)
 
 # ...or if you use batlas with VSCode...
 batlas prototypes.awesome-project code %!
 
 # create a link while in directory of workspace [OLD]
-batl link init -n library prototypes.awesome-library
+mkdir lib
+batl link prototypes.awesome-library lib/awesome
 
 # Start building!
 ```
