@@ -1,6 +1,6 @@
 /target
 
 # batl.gitignore begin DO NOT MODIFY
-/core/source/github
 /core/source/tar
+/core/source/github
 # batl.gitignore end DO NOT MODIFY

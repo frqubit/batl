@@ -160,14 +160,16 @@ impl Name {
                     segments.push(val.to_string());
                 } else if let Some(val) = component.strip_prefix("_") {
                     segments.push(val.to_string());
+                } else {
+                    segments.push(component.to_string());
                 }
             }
 
-            let segments = subpath
-                .components()
-                .map(|v| v.as_os_str().to_string_lossy())
-                .map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
-                .collect();
+            // let segments = subpath
+            //     .components()
+            //     .map(|v| v.as_os_str().to_string_lossy())
+            //     .map(|v| v.strip_prefix("_").unwrap_or(&v).to_string())
+            //     .collect();
 
             return Ok(Name { segments, version });
         }

@@ -13,8 +13,8 @@ install = "cargo install --debug --path packages/batl"
 "battalion.source.tar" = "0.1.0"
 
 [links]
-"battalion.source.tar" = "core/source/tar"
-"battalion.source.github" = "core/source/github"
+"battalion.source.tar@0.1.0" = "core/source/tar"
+"battalion.source.github@0.1.0" = "core/source/github"
 
 [restrict.Unix]
 include = "require"

@@ -76,6 +76,7 @@ impl Repository {
     pub fn load(name: Name) -> EyreResult<Option<Self>> {
         let name_segments = name.path_segments_as_repository_name();
 
+        // TODO if a version exists but not the version asked for, it should provide a more precise error
         if let Some(version) = &name.version {
             // If the repository has a version, try to load local copy first
             let regular_version_path =
@@ -473,7 +474,21 @@ impl Repository {
             return Err(err_resource_already_exists());
         }
 
-        if !self.config.dependencies.contains_key(&name) {
+        if let Some(version_of) = self
+            .config
+            .dependencies
+            .get(&name.clone().without_version())
+        {
+            if version_of != &repository.config.version {
+                return Err(err_resource_does_not_have_thing(
+                    "repository",
+                    &name
+                        .clone()
+                        .with_version(repository.config.version.clone())
+                        .to_string(),
+                ));
+            }
+        } else {
             return Err(err_resource_does_not_have_thing(
                 "repository",
                 &name.to_string(),
