@@ -29,7 +29,7 @@ cd $(batl which prototypes.awesome-project)
 # ...or if you use batlas with VSCode...
 batlas prototypes.awesome-project code %!
 
-# create a link while in directory of workspace [OLD]
+# create a link while in directory of workspace
 mkdir lib
 batl link prototypes.awesome-library lib/awesome
 
