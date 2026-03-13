@@ -1,5 +1,6 @@
 use crate::{
-    error::err_resource_does_not_exist, resource::tomlconfig::Environment0_3_0, EyreResult,
+    error::err_resource_does_not_exist, output::warn, resource::tomlconfig::Environment0_3_0,
+    EyreResult,
 };
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -84,6 +85,7 @@ impl RecursedRepositoryDeps {
                     version: k.1,
                     hashid: v,
                 })
+                .sorted()
                 .collect(),
         ))
     }
@@ -94,6 +96,44 @@ pub struct SummarizedDependency {
     pub name: Name,
     pub version: Version,
     pub hashid: HashId,
+}
+
+impl Ord for SummarizedDependency {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // It's nonsensical to be equal but it's nonsensical for this to fail anyway so yeaa
+        self.partial_cmp(other).unwrap_or(std::cmp::Ordering::Equal)
+    }
+}
+
+impl PartialOrd for SummarizedDependency {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let self_name = self.name.to_string();
+        let other_name = other.name.to_string();
+
+        if self_name > other_name {
+            return Some(std::cmp::Ordering::Greater);
+        } else if self_name < other_name {
+            return Some(std::cmp::Ordering::Less);
+        } else if self.version > other.version {
+            return Some(std::cmp::Ordering::Greater);
+        } else if self.version < other.version {
+            return Some(std::cmp::Ordering::Less);
+        }
+
+        // Versions can technically have builds/tags that aren't counted by Ord
+        // Check these with to_string
+        let self_version = self.version.to_string();
+        let other_version = other.version.to_string();
+        if self_version > other_version {
+            return Some(std::cmp::Ordering::Greater);
+        } else if self_version < other_version {
+            return Some(std::cmp::Ordering::Less);
+        } else {
+            // They're somehow the same dependency which literally makes no sense?
+            warn("battalion has detected the exact same dependency registered twice in your lockfile. this is unintentional. please report.");
+            return Some(std::cmp::Ordering::Equal);
+        }
+    }
 }
 
 #[non_exhaustive]

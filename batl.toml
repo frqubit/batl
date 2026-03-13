@@ -9,10 +9,12 @@ version = "0.1.0"
 install = "cargo install --debug --path packages/batl"
 
 [dependencies]
-"battalion.batl.lambda" = "0.1.0"
+"battalion.source.github" = "0.1.0"
+"battalion.source.tar" = "0.1.0"
 
 [links]
-"battalion.batl.lambda" = "extras/lambda"
+"battalion.source.tar" = "core/source/tar"
+"battalion.source.github" = "core/source/github"
 
 [restrict.Unix]
 include = "require"

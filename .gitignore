@@ -1,5 +1,6 @@
 /target
 
 # batl.gitignore begin DO NOT MODIFY
-extras/lambda
+/core/source/github
+/core/source/tar
 # batl.gitignore end DO NOT MODIFY
