@@ -94,6 +94,7 @@ fn main() -> EyreResult<()> {
 
     let result = match cli.subcmd {
         SubCommand::Repository(args) => commands::repository::run(args.subcmd),
+        #[cfg(debug_assertions)]
         SubCommand::Dev(args) => commands::dev::run(args.subcmd),
         SubCommand::Setup => commands::cmd_setup(),
         SubCommand::Add { name } => commands::cmd_add(name),

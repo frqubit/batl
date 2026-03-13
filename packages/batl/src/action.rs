@@ -45,6 +45,7 @@ impl BatlAction for DownloadAction {
                 config: batlconstant::BatlConstantTargetConfig {
                     name: None,
                     version: None,
+                    reload: batlconstant::target_config_reload(lua, &self.download_to)?,
                 },
             },
         })

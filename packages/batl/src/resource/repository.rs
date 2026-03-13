@@ -190,6 +190,17 @@ impl Repository {
         }
     }
 
+    /// Reload the repository batl.toml, in cases where
+    /// an external program reasonably could have modified it
+    pub fn reload(&mut self) -> EyreResult<()> {
+        let toml = AnyTomlConfig::read_toml(&self.path().join("batl.toml"))?;
+        let latest = TomlConfigLatest::from(toml);
+
+        self.config = latest.into();
+
+        Ok(())
+    }
+
     /// Creates a repository at the given name, with the
     /// given options.
     ///

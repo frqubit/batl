@@ -1,3 +1,4 @@
+use crate::resource::tomlconfig::TomlConfig;
 use batl_macros::ToFromLuaValue;
 use semver::Version;
 use std::{
@@ -31,6 +32,7 @@ pub struct BatlConstantTargetConfig {
     pub name: Option<Name>,
     #[lua_serde]
     pub version: Option<Version>,
+    pub reload: mlua::Function,
 }
 
 #[derive(ToFromLuaValue)]
@@ -81,6 +83,24 @@ pub fn target_execute(lua: &mlua::Lua, exec_dir: &Path) -> mlua::Result<mlua::Fu
                 status: 255,
                 stdout: Default::default(),
             })
+        }
+    })
+}
+
+pub fn target_config_reload(lua: &mlua::Lua, exec_dir: &Path) -> mlua::Result<mlua::Function> {
+    let exec_dir = exec_dir.to_path_buf();
+
+    lua.create_function(move |_, config: mlua::Table| {
+        let toml = crate::resource::repository::AnyTomlConfig::load(&exec_dir);
+
+        if let Some(toml) = toml {
+            let latest: crate::resource::repository::TomlConfigLatest = toml.into();
+            config.set("name", latest.repository.name.to_string())?;
+            config.set("version", latest.repository.version.to_string())?;
+
+            Ok(true)
+        } else {
+            Ok(false)
         }
     })
 }

@@ -4,7 +4,7 @@ use std::{collections::HashMap, env::current_dir};
 use crate::{
     action::DownloadAction,
     error::{
-        err_internal_structure_malformed, err_not_executed_inside_repository,
+        err_input_requested_is_invalid, err_not_executed_inside_repository,
         err_resource_does_not_exist, err_theoretical,
     },
     resource::{repository::CreateRepositoryOptions, source::RepositorySource, Name, Repository},
@@ -16,14 +16,14 @@ use clap::Subcommand;
 pub enum Commands {
     HashId,
     Sources,
-    Download { name: Name, repository: String },
+    Download { name: Name, config: Vec<String> },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
-        Commands::Download { name, repository } => cmd_download(name, repository),
+        Commands::Download { name, config } => cmd_download(name, config),
     }
 }
 
@@ -48,15 +48,25 @@ fn cmd_sources() -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_download(name: Name, repository_str: String) -> EyreResult<()> {
+pub fn cmd_download(name: Name, config: Vec<String>) -> EyreResult<()> {
     let repository =
         Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
     let mut attrs = HashMap::new();
-    attrs.insert("repository".to_string(), repository_str);
+
+    for config_val in config {
+        if let Some((name, val)) = config_val.split_once('=') {
+            attrs.insert(name.to_string(), val.to_string());
+        } else {
+            return Err(err_input_requested_is_invalid(
+                &config_val,
+                "config values must have '='",
+            ));
+        }
+    }
 
     let source = RepositorySource {
-        handler: Name::new("battalion.source.github")?,
+        handler: name,
         attrs,
     };
 
@@ -78,13 +88,13 @@ pub fn cmd_download(name: Name, repository_str: String) -> EyreResult<()> {
     let data = crate::action::run_action(&repository, action);
 
     if let Ok(data) = data {
+        let repo_name = data.name.unwrap();
+        let repo_version = data.version.unwrap();
+
         let mut new_repo = Repository::create(
-            data.name.unwrap().with_version(data.version.unwrap()),
+            repo_name.clone().with_version(repo_version.clone()),
             CreateRepositoryOptions { git: None },
         )?;
-
-        new_repo.config_mut().sources.push(source);
-        new_repo.save()?;
 
         for entry in std::fs::read_dir(&tempdir_path)? {
             let entry = entry?;
@@ -95,6 +105,14 @@ pub fn cmd_download(name: Name, repository_str: String) -> EyreResult<()> {
             std::fs::rename(&source_path, &destination_path)?;
         }
         std::fs::remove_dir_all(tempdir_path)?;
+
+        new_repo.reload()?;
+
+        // [TODO] The name could be changed, account for this now but in the future this needs to be forbidden
+        new_repo.config_mut().name = repo_name.clone();
+        new_repo.config_mut().version = repo_version.clone();
+        new_repo.config_mut().sources.push(source);
+        new_repo.save()?;
     } else {
         std::fs::remove_dir_all(tempdir_path)?;
         data?;
