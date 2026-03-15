@@ -23,7 +23,6 @@ versioned_identical!("0.3.0" => "latest" : [
     Dependencies,
     Restrict,
     Restrictor,
-    Links,
     Sources,
     Source
 ]);
@@ -59,7 +58,6 @@ pub struct Repository0_2_2 {
     pub git: Option<RepositoryGit0_2_2>,
 }
 
-pub type Links0_2_2 = Links0_2_1;
 pub type RepositoryGit0_2_2 = RepositoryGit0_2_1;
 pub type Scripts0_2_2 = Scripts0_2_1;
 pub type Dependencies0_2_2 = Dependencies0_2_1;
@@ -88,7 +86,6 @@ pub enum RestrictRequirement0_2_2 {
 }
 
 pub type Repository0_2_1 = Repository0_2_0;
-pub type Links0_2_1 = Links0_2_0;
 pub type RepositoryGit0_2_1 = RepositoryGit0_2_0;
 pub type Scripts0_2_1 = Scripts0_2_0;
 pub type Dependencies0_2_1 = Dependencies0_2_0;
@@ -100,8 +97,6 @@ pub struct Repository0_2_0 {
     pub build: Option<String>,
     pub git: Option<RepositoryGit0_2_0>,
 }
-
-pub type Links0_2_0 = HashMap<Name, PathBuf>;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct RepositoryGit0_2_0 {

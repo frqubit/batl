@@ -1,5 +1,4 @@
 use mlua::prelude::*;
-use semver::Version;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
@@ -8,7 +7,7 @@ use crate::error::{
     err_action_script_failed, err_resource_does_not_exist, err_resource_does_not_have_thing,
 };
 use crate::resource::source::RepositorySource;
-use crate::resource::{repository, Name, Repository};
+use crate::resource::Repository;
 use crate::EyreResult;
 
 pub mod batlconstant;

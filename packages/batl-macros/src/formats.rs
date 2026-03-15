@@ -55,6 +55,7 @@ impl ToTokens for VersionedIdentical {
                 );
 
                 quote_spanned! {object.span() =>
+                    #[allow(dead_code)]
                     pub type #new_ident = #old_ident;
                 }
             })

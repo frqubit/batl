@@ -244,7 +244,7 @@ pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
 pub fn cmd_init(name: String) -> EyreResult<()> {
     let name = Name::new(&name)?;
 
-    Repository::create(name, Default::default())?;
+    Repository::create(name)?;
 
     success("Initialized repository successfully");
 

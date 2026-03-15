@@ -32,20 +32,6 @@ pub struct Repository {
     name: Name,
 }
 
-#[derive(Default)]
-#[non_exhaustive]
-pub struct CreateRepositoryOptions {
-    pub git: Option<tomlconfig::RepositoryGit0_2_2>,
-}
-
-impl CreateRepositoryOptions {
-    #[inline]
-    #[must_use]
-    pub const fn git(git: tomlconfig::RepositoryGit0_2_2) -> Self {
-        Self { git: Some(git) }
-    }
-}
-
 impl Repository {
     #[must_use]
     pub const fn config(&self) -> &Config {
@@ -210,7 +196,7 @@ impl Repository {
     ///
     /// Propogates any errors found along the way
     #[inline]
-    pub fn create(name: Name, options: CreateRepositoryOptions) -> EyreResult<Self> {
+    pub fn create(name: Name) -> EyreResult<Self> {
         let repo_path = crate::system::repository_root()
             .ok_or(err_battalion_not_setup())?
             .join(name.path_segments_as_repository_name());

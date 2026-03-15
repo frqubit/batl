@@ -1,13 +1,9 @@
 use crate::error::*;
 use crate::output::*;
-use crate::resource::repository::CreateRepositoryOptions;
-use crate::resource::tomlconfig::RepositoryGit0_2_2;
 use crate::resource::{Name, Repository};
 use clap::Subcommand;
 use console::Term;
-use git2::build::RepoBuilder;
-use git2::{FetchOptions, Progress, RemoteCallbacks};
-use std::env::current_dir;
+use git2::Progress;
 use std::io::Write;
 
 #[derive(Subcommand)]
@@ -70,13 +66,7 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
 fn cmd_clone(url: String, name: String) -> EyreResult<()> {
     let name = Name::new(&name)?;
 
-    Repository::create(
-        name,
-        CreateRepositoryOptions::git(RepositoryGit0_2_2 {
-            url,
-            path: "git".to_string(),
-        }),
-    )?;
+    Repository::create(name)?;
 
     success("Initialized repository clone successfully");
 

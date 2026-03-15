@@ -7,7 +7,7 @@ use crate::{
         err_input_requested_is_invalid, err_not_executed_inside_repository,
         err_resource_does_not_exist, err_theoretical,
     },
-    resource::{repository::CreateRepositoryOptions, source::RepositorySource, Name, Repository},
+    resource::{source::RepositorySource, Name, Repository},
     EyreResult,
 };
 use clap::Subcommand;
@@ -91,10 +91,8 @@ pub fn cmd_download(name: Name, config: Vec<String>) -> EyreResult<()> {
         let repo_name = data.name.unwrap();
         let repo_version = data.version.unwrap();
 
-        let mut new_repo = Repository::create(
-            repo_name.clone().with_version(repo_version.clone()),
-            CreateRepositoryOptions { git: None },
-        )?;
+        let mut new_repo =
+            Repository::create(repo_name.clone().with_version(repo_version.clone()))?;
 
         for entry in std::fs::read_dir(&tempdir_path)? {
             let entry = entry?;
