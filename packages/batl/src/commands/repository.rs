@@ -17,11 +17,6 @@ pub enum Commands {
     Delete {
         name: String,
     },
-    Clone {
-        url: String,
-        #[arg(short = 'o')]
-        name: String,
-    },
     // Env {
     // 	#[arg(short = 'n')]
     // 	name: Option<String>,
@@ -51,7 +46,6 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         Commands::Ls { filter } => super::cmd_ls(filter, false),
         Commands::Init { name } => super::cmd_init(name),
         Commands::Delete { name } => super::cmd_delete(name),
-        Commands::Clone { url, name } => cmd_clone(url, name),
         // Commands::Env { name, var } => {
         // 	cmd_env(name, var)
         // },
@@ -61,16 +55,6 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         Commands::Fetch { name } => super::cmd_fetch(name, super::CmdFetchOptions::default()),
         Commands::Exec { name, script } => super::cmd_exec(name, script, vec![]),
     }
-}
-
-fn cmd_clone(url: String, name: String) -> EyreResult<()> {
-    let name = Name::new(&name)?;
-
-    Repository::create(name)?;
-
-    success("Initialized repository clone successfully");
-
-    Ok(())
 }
 
 // fn cmd_scaffold() -> EyreResult<()> {

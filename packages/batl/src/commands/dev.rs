@@ -92,7 +92,7 @@ pub fn cmd_download(name: Name, config: Vec<String>) -> EyreResult<()> {
         let repo_version = data.version.unwrap();
 
         let mut new_repo =
-            Repository::create(repo_name.clone().with_version(repo_version.clone()))?;
+            Repository::create(repo_name.clone().with_version(repo_version.clone()), true)?;
 
         for entry in std::fs::read_dir(&tempdir_path)? {
             let entry = entry?;

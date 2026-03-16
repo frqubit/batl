@@ -244,7 +244,7 @@ pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
 pub fn cmd_init(name: String) -> EyreResult<()> {
     let name = Name::new(&name)?;
 
-    Repository::create(name)?;
+    Repository::create(name, false)?;
 
     success("Initialized repository successfully");
 
@@ -457,7 +457,9 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Eyre
                 .unwrap_or("".to_string())
         ));
 
-        let batl_pwd = current_dir()?;
+        let batl_pwd = std::env::var("BATL_PWD")
+            .map(PathBuf::from)
+            .unwrap_or(current_dir()?);
 
         let status = std::process::Command::new("sh")
             .current_dir(repository.path())

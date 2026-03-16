@@ -20,6 +20,7 @@ use std::env::current_dir;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use xxhash_rust::xxh3::Xxh3;
 
 pub struct Repository {
     /// The actual path of the repository, absolute by standard
@@ -196,8 +197,13 @@ impl Repository {
     ///
     /// Propogates any errors found along the way
     #[inline]
-    pub fn create(name: Name) -> EyreResult<Self> {
-        let repo_path = crate::system::repository_root()
+    pub fn create(name: Name, fetched: bool) -> EyreResult<Self> {
+        let repo_root = match fetched {
+            true => crate::system::fetched_repository_root(),
+            false => crate::system::repository_root(),
+        };
+
+        let repo_path = repo_root
             .ok_or(err_battalion_not_setup())?
             .join(name.path_segments_as_repository_name());
 
@@ -423,7 +429,9 @@ impl Repository {
             }
         }
 
-        self.config.dependencies.insert(name.clone(), version);
+        self.config
+            .dependencies
+            .insert(name.without_version(), version);
         self.save()?;
 
         Ok(self)
@@ -493,7 +501,7 @@ impl Repository {
 
         symlink_dir(&src_path, &dest)?;
 
-        let subpathed_name = SubpathableName::new(name, subpath);
+        let subpathed_name = SubpathableName::new(name.without_version(), subpath);
         self.config.links.insert(subpathed_name, dest);
 
         self.save()?;
@@ -635,7 +643,7 @@ impl Repository {
 
             if let Some(rel_path) = rel_path_opt {
                 let filename = rel_path.to_string_lossy().to_string();
-                let mut file_hasher = Sha256::new();
+                let mut file_hasher = Xxh3::new();
                 let mut buffer = [0; 1024];
 
                 let mut file = File::open(abs_path)?;
@@ -648,7 +656,7 @@ impl Repository {
                     file_hasher.update(&buffer[..n]);
                 }
 
-                let file_hash = format!("{:X}", file_hasher.finalize());
+                let file_hash = format!("{:X}", file_hasher.digest128());
 
                 let pos = files.iter().position(|file| file.0 > filename);
                 if let Some(pos) = pos {
