@@ -1,5 +1,10 @@
 use crate::{
-    error::err_resource_does_not_exist, output::warn, resource::tomlconfig::Environment0_3_0,
+    error::err_resource_does_not_exist,
+    output::warn,
+    resource::{
+        source::RepositorySource,
+        tomlconfig::{self, Environment0_3_0},
+    },
     EyreResult,
 };
 use itertools::Itertools;
@@ -52,8 +57,8 @@ impl RecursedRepositoryDeps {
 
     fn add_deps_of_repository_to_tracked(
         repository: &Repository,
-        tracked: Option<HashMap<(Name, Version), HashId>>,
-    ) -> EyreResult<HashMap<(Name, Version), HashId>> {
+        tracked: Option<HashMap<(Name, Version), (HashId, Vec<RepositorySource>)>>,
+    ) -> EyreResult<HashMap<(Name, Version), (HashId, Vec<RepositorySource>)>> {
         let mut out = tracked.unwrap_or_default();
 
         for dependency in &repository.config().dependencies {
@@ -68,7 +73,10 @@ impl RecursedRepositoryDeps {
 
                 out = Self::add_deps_of_repository_to_tracked(&dep_repo, Some(out))?;
 
-                out.insert(dep_clone, dep_repo.gen_hashid()?);
+                let hash_id = dep_repo.gen_hashid()?;
+                let sources = dep_repo.config().sources.clone();
+
+                out.insert(dep_clone, (hash_id, sources));
             }
         }
 
@@ -83,7 +91,8 @@ impl RecursedRepositoryDeps {
                 .map(|(k, v)| SummarizedDependency {
                     name: k.0,
                     version: k.1,
-                    hashid: v,
+                    hashid: v.0,
+                    sources: v.1.into_iter().map(|item| item.into()).collect(),
                 })
                 .sorted()
                 .collect(),
@@ -91,12 +100,15 @@ impl RecursedRepositoryDeps {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Clone)]
 pub struct SummarizedDependency {
     pub name: Name,
     pub version: Version,
     pub hashid: HashId,
+    pub sources: tomlconfig::SourcesLatest,
 }
+
+impl Eq for SummarizedDependency {}
 
 impl Ord for SummarizedDependency {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
