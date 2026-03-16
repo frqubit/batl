@@ -17,6 +17,134 @@ pub mod tomlconfig;
 pub use self::batlrc::BatlRcLatest as BatlRc;
 pub use self::repository::Repository;
 
+/// A Battalion resource name that MUST include a
+/// version. If you don't require a version, use
+/// `Name` instead.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExplicitlyVersionedName {
+    segments: Vec<String>,
+    version: Version,
+}
+
+impl ExplicitlyVersionedName {
+    /// Get the path components of a name
+    #[must_use]
+    pub const fn segments(&self) -> &Vec<String> {
+        &self.segments
+    }
+
+    pub const fn version(&self) -> &Version {
+        &self.version
+    }
+
+    pub fn without_version(&self) -> Name {
+        Name {
+            segments: self.segments.clone(),
+            version: None,
+        }
+    }
+
+    pub fn into_name(self) -> Name {
+        Name {
+            segments: self.segments,
+            version: Some(self.version),
+        }
+    }
+
+    pub fn new(val: &str) -> EyreResult<Self> {
+        let mut next = String::new();
+        let mut segments = vec![];
+        let mut version = String::new();
+        let mut doing_version = false;
+
+        for c in val.chars() {
+            if doing_version {
+                version.push(c);
+                continue;
+            }
+
+            if c == '@' {
+                // Last segment will be pushed later, DO NOT do it now
+                doing_version = true;
+                continue;
+            }
+
+            if next.is_empty() && c == '_' {
+                return Err(err_input_requested_is_invalid(
+                    val,
+                    "Name segment cannot start with an underscore",
+                ));
+            }
+
+            if c == '.' {
+                if next.is_empty() {
+                    return Err(err_input_requested_is_invalid(
+                        val,
+                        "Name segment cannot end with a period",
+                    ));
+                }
+
+                // Start a new segment
+                segments.push(next);
+                next = String::new();
+                continue;
+            }
+
+            // Add any valid characters to the segment
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                next.push(c);
+            } else {
+                return Err(err_input_requested_is_invalid(
+                    val,
+                    "Segment parts must be alphanumeric",
+                ));
+            }
+        }
+
+        // If segment is empty then either last c was
+        // a period or the input was empty
+        if next.is_empty() {
+            return Err(err_input_requested_is_invalid(
+                val,
+                "Name cannot end with a period or be empty",
+            ));
+        }
+
+        if version.is_empty() {
+            return Err(err_input_requested_is_invalid(
+                &version,
+                "Version must be specified for explicitly versioned name",
+            ));
+        }
+
+        segments.push(next);
+
+        Ok(Self {
+            segments,
+            version: Version::parse(&version)?,
+        })
+    }
+}
+
+impl FromStr for ExplicitlyVersionedName {
+    type Err = color_eyre::eyre::Error;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::new(s)
+    }
+}
+
+impl Display for ExplicitlyVersionedName {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&self.segments.join("."))?;
+        f.write_fmt(format_args!("@{}", self.version))?;
+
+        Ok(())
+    }
+}
+
 /// A Battalion resource name
 ///
 /// These are used for repositories, workspaces, and
@@ -310,6 +438,51 @@ impl<'de> Deserialize<'de> for Name {
 }
 
 impl Serialize for Name {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        serializer.serialize_str(&format!("{self}"))
+    }
+}
+
+#[expect(clippy::missing_trait_methods, reason = "serde autoimpls methods")]
+impl<'de> Deserialize<'de> for ExplicitlyVersionedName {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        /// serde visitor for a battalion resource name
+        struct NameVisitor;
+
+        impl Visitor<'_> for NameVisitor {
+            type Value = ExplicitlyVersionedName;
+
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+                formatter.write_str("A valid resource name")
+            }
+
+            #[expect(clippy::map_err_ignore, reason = "err specifics not important")]
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                ExplicitlyVersionedName::from_str(v).map_err(|_| {
+                    de::Error::invalid_value(
+                        de::Unexpected::Str(v),
+                        &"A valid explicitly versioned resource name",
+                    )
+                })
+            }
+        }
+
+        deserializer.deserialize_str(NameVisitor)
+    }
+}
+
+impl Serialize for ExplicitlyVersionedName {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
