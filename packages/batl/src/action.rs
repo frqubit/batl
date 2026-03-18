@@ -2,6 +2,7 @@ use mlua::prelude::*;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
 use crate::error::{
     err_action_script_failed, err_resource_does_not_exist, err_resource_does_not_have_thing,
@@ -16,7 +17,11 @@ pub trait BatlAction {
     type BatlActionBatlConstant: IntoLua + FromLua;
     type BatlActionOutput;
 
-    fn batl_action_batl_constant(&self, lua: &Lua) -> EyreResult<Self::BatlActionBatlConstant>;
+    fn batl_action_batl_constant(
+        &self,
+        lua: &Lua,
+        env: &ActionEnv,
+    ) -> EyreResult<Self::BatlActionBatlConstant>;
     fn function_name(&self) -> &'static str;
     fn as_output(
         &self,
@@ -24,34 +29,40 @@ pub trait BatlAction {
     ) -> EyreResult<Self::BatlActionOutput>;
 }
 
+pub struct ActionEnv {
+    pub cwd: TempDir,
+}
+
 pub struct PullAction {
     pub source: RepositorySource,
-    // pub target_repo: Option<&'life repository::Repository>,
-    pub download_to: PathBuf,
 }
 
 impl BatlAction for PullAction {
     type BatlActionBatlConstant = batlconstant::DownloadActionBatlConstant;
     type BatlActionOutput = batlconstant::BatlConstantTargetConfig;
 
-    fn batl_action_batl_constant(&self, lua: &Lua) -> EyreResult<Self::BatlActionBatlConstant> {
+    fn batl_action_batl_constant(
+        &self,
+        lua: &Lua,
+        env: &ActionEnv,
+    ) -> EyreResult<Self::BatlActionBatlConstant> {
         Ok(batlconstant::DownloadActionBatlConstant {
             handler: batlconstant::BatlConstantHandler {
                 data: self.source.attrs.clone(),
             },
             target: batlconstant::BatlConstantTarget {
-                execute: batlconstant::target_execute(lua, &self.download_to)?,
+                execute: batlconstant::target_execute(lua, &env.cwd.path())?,
                 config: batlconstant::BatlConstantTargetConfig {
                     name: None,
                     version: None,
-                    reload: batlconstant::target_config_reload(lua, &self.download_to)?,
+                    reload: batlconstant::target_config_reload(lua, &env.cwd.path())?,
                 },
             },
         })
     }
 
     fn function_name(&self) -> &'static str {
-        "push"
+        "pull"
     }
 
     fn as_output(
@@ -68,7 +79,10 @@ impl BatlAction for PullAction {
     }
 }
 
-pub fn run_action<A>(action_repo: &Repository, action: A) -> EyreResult<A::BatlActionOutput>
+pub fn run_action<A>(
+    action_repo: &Repository,
+    action: A,
+) -> EyreResult<(A::BatlActionOutput, ActionEnv)>
 where
     A: BatlAction,
 {
@@ -99,18 +113,27 @@ where
     // Start lua environment
     let lua = Lua::new();
 
+    // Make temporary folder
+    let batl_temp_path = crate::system::gen_root().unwrap().join("temp");
+    let temp_dir = tempfile::TempDir::new_in(&batl_temp_path)?;
+
+    // Get action env
+    let action_env = ActionEnv { cwd: temp_dir };
+
     lua.load(action_data)
         .exec()
         .map_err(|e| err_action_script_failed(&e.to_string()))?;
 
     let lua_function: mlua::Function = lua.globals().get(action.function_name())?;
-    lua.globals()
-        .set("__batl_global", action.batl_action_batl_constant(&lua)?)?;
+    lua.globals().set(
+        "__batl_global",
+        action.batl_action_batl_constant(&lua, &action_env)?,
+    )?;
     let function_data: mlua::Value = lua.globals().get("__batl_global")?;
 
     lua_function.call::<()>(function_data)?;
 
     let function_data: A::BatlActionBatlConstant = lua.globals().get("__batl_global")?;
 
-    action.as_output(function_data)
+    action.as_output(function_data).map(|d| (d, action_env))
 }
