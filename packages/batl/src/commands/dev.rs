@@ -2,7 +2,7 @@ use rand::Rng;
 use std::{collections::HashMap, env::current_dir};
 
 use crate::{
-    action::DownloadAction,
+    action::PullAction,
     error::{
         err_input_requested_is_invalid, err_not_executed_inside_repository,
         err_resource_does_not_exist, err_theoretical,
@@ -16,14 +16,14 @@ use clap::Subcommand;
 pub enum Commands {
     HashId,
     Sources,
-    Download { name: Name, config: Vec<String> },
+    Pull { name: Name, config: Vec<String> },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
-        Commands::Download { name, config } => cmd_download(name, config),
+        Commands::Pull { name, config } => cmd_pull(name, config),
     }
 }
 
@@ -48,7 +48,7 @@ fn cmd_sources() -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_download(name: Name, config: Vec<String>) -> EyreResult<()> {
+pub fn cmd_pull(name: Name, config: Vec<String>) -> EyreResult<()> {
     let repository =
         Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
@@ -80,7 +80,7 @@ pub fn cmd_download(name: Name, config: Vec<String>) -> EyreResult<()> {
     let tempdir_path = batl_gen_path.join("temp").join(rand_code);
     let tempdir = std::fs::create_dir_all(&tempdir_path);
 
-    let action = DownloadAction {
+    let action = PullAction {
         source: source.clone(),
         download_to: tempdir_path.clone(),
     };

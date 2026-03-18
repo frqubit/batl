@@ -24,13 +24,13 @@ pub trait BatlAction {
     ) -> EyreResult<Self::BatlActionOutput>;
 }
 
-pub struct DownloadAction {
+pub struct PullAction {
     pub source: RepositorySource,
     // pub target_repo: Option<&'life repository::Repository>,
     pub download_to: PathBuf,
 }
 
-impl BatlAction for DownloadAction {
+impl BatlAction for PullAction {
     type BatlActionBatlConstant = batlconstant::DownloadActionBatlConstant;
     type BatlActionOutput = batlconstant::BatlConstantTargetConfig;
 
@@ -51,7 +51,7 @@ impl BatlAction for DownloadAction {
     }
 
     fn function_name(&self) -> &'static str {
-        "download"
+        "push"
     }
 
     fn as_output(
