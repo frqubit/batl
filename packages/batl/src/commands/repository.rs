@@ -9,13 +9,13 @@ use std::io::Write;
 #[derive(Subcommand)]
 pub enum Commands {
     Ls {
-        filter: Option<String>,
+        filter: Option<Name>,
     },
     Init {
-        name: String,
+        name: Name,
     },
     Delete {
-        name: String,
+        name: Name,
     },
     // Env {
     // 	#[arg(short = 'n')]
@@ -28,15 +28,12 @@ pub enum Commands {
     Publish {
         name: String,
     },
-    Fetch {
-        name: String,
-    },
     Which {
-        name: String,
+        name: Name,
     },
     Exec {
         #[arg(short = 'n')]
-        name: Option<String>,
+        name: Option<Name>,
         script: String,
     },
 }
@@ -52,7 +49,6 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         Commands::Archive { name } => cmd_archive(name),
         Commands::Publish { name } => super::cmd_publish(name),
         Commands::Which { name } => super::cmd_which(Some(name), false),
-        Commands::Fetch { name } => super::cmd_fetch(name, super::CmdFetchOptions::default()),
         Commands::Exec { name, script } => super::cmd_exec(name, script, vec![]),
     }
 }

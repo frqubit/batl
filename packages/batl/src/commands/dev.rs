@@ -1,8 +1,6 @@
-use rand::Rng;
 use std::{collections::HashMap, env::current_dir};
 
 use crate::{
-    action::PullAction,
     error::{
         err_input_requested_is_invalid, err_not_executed_inside_repository,
         err_resource_does_not_exist, err_theoretical,
@@ -16,14 +14,12 @@ use clap::Subcommand;
 pub enum Commands {
     HashId,
     Sources,
-    Pull { name: Name, config: Vec<String> },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
-        Commands::Pull { name, config } => cmd_pull(name, config),
     }
 }
 
@@ -44,62 +40,6 @@ fn cmd_sources() -> EyreResult<()> {
     let sources = repository.config().sources.clone();
 
     println!("{:?}", sources);
-
-    Ok(())
-}
-
-pub fn cmd_pull(name: Name, config: Vec<String>) -> EyreResult<()> {
-    let repository =
-        Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
-
-    let mut attrs = HashMap::new();
-
-    for config_val in config {
-        if let Some((name, val)) = config_val.split_once('=') {
-            attrs.insert(name.to_string(), val.to_string());
-        } else {
-            return Err(err_input_requested_is_invalid(
-                &config_val,
-                "config values must have '='",
-            ));
-        }
-    }
-
-    let source = RepositorySource {
-        handler: name,
-        attrs,
-    };
-
-    let action = PullAction {
-        source: source.clone(),
-    };
-
-    let (data, action_env) = crate::action::run_action(&repository, action)?;
-    let tempdir_path = action_env.cwd.path();
-
-    let repo_name = data.name.unwrap();
-    let repo_version = data.version.unwrap();
-
-    let mut new_repo =
-        Repository::create(repo_name.clone().with_version(repo_version.clone()), true)?;
-
-    for entry in std::fs::read_dir(tempdir_path)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let file_name = source_path.file_name().ok_or_else(err_theoretical)?;
-        let destination_path = new_repo.path().join(file_name);
-
-        std::fs::rename(&source_path, &destination_path)?;
-    }
-    std::fs::remove_dir_all(tempdir_path)?;
-
-    new_repo.reload()?;
-
-    // [TODO] The name could be changed, account for this now but in the future this needs to be forbidden
-    new_repo.config_mut().name = repo_name.clone();
-    new_repo.config_mut().version = repo_version.clone();
-    new_repo.config_mut().sources.push(source);
-    new_repo.save()?;
 
     Ok(())
 }

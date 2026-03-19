@@ -2,6 +2,7 @@ use crate::error::*;
 use crate::error::{err_resource_does_not_exist, err_script_execution_failed};
 use crate::output::{error, info, success};
 use crate::resource::batlrc::AnyBatlRc;
+use crate::resource::source::RepositorySource;
 use crate::resource::tomlconfig::{write_toml, TomlConfig};
 use crate::resource::{self, Name, Repository, SubpathableName};
 use crate::resource::{batlrc::BatlRcLatest, BatlRc};
@@ -13,6 +14,7 @@ use git2::build::RepoBuilder;
 use git2::{FetchOptions, Progress, RemoteCallbacks};
 use itertools::Itertools;
 use semver::Version;
+use std::collections::HashMap;
 use std::env::current_dir;
 use std::env::var as env_var;
 use std::io::Write;
@@ -131,12 +133,11 @@ fn print_files_of_repository(name: Name) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
+pub fn cmd_ls(filter: Option<Name>, versions: bool) -> EyreResult<()> {
     let repo_root = crate::system::repository_root().ok_or(err_battalion_not_setup())?;
 
     if versions {
-        if let Some(v) = filter {
-            let name = Name::new(&v)?;
+        if let Some(name) = filter {
             return print_versions(name);
         } else {
             return Err(err_input_requested_is_invalid(
@@ -146,25 +147,22 @@ pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
         }
     }
 
-    if let Some(filter_str) = &filter {
-        let filter_name = Name::new(filter_str)?;
+    if let Some(filter_name) = &filter {
         if filter_name.version().is_some() {
-            return print_files_of_repository(filter_name);
+            return print_files_of_repository(filter_name.clone());
         }
     }
 
     let filter_path = filter
         .clone()
-        .map(|v| Name::new(&v).map(|v| Name::path_segments_as_folder_name(&v)))
-        .transpose()?
+        .map(|v| Name::path_segments_as_folder_name(&v))
         .transpose()?
         .unwrap_or_default();
 
     let search_path = repo_root.join(filter_path);
 
     if !search_path.exists() {
-        if let Some(v) = filter {
-            let name = Name::new(&v)?;
+        if let Some(name) = filter {
             return print_versions(name);
         } else {
             return Ok(());
@@ -241,9 +239,7 @@ pub fn cmd_ls(filter: Option<String>, versions: bool) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_init(name: String) -> EyreResult<()> {
-    let name = Name::new(&name)?;
-
+pub fn cmd_init(name: Name) -> EyreResult<()> {
     Repository::create(name, false)?;
 
     success("Initialized repository successfully");
@@ -251,15 +247,15 @@ pub fn cmd_init(name: String) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_delete(name: String) -> EyreResult<()> {
+pub fn cmd_delete(name: Name) -> EyreResult<()> {
     let confirmation = dialoguer::Confirm::new()
         .with_prompt("This deletion is permanent, are you sure you want to continue?")
         .interact()
         .unwrap();
 
     if confirmation {
-        let repository =
-            Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
+        let repository = Repository::load(name.clone())?
+            .ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
         let mut path = repository.path().to_path_buf();
 
@@ -282,9 +278,7 @@ pub fn cmd_delete(name: String) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_search(name: Option<String>) -> EyreResult<()> {
-    let name = name.map(|v| Name::new(&v)).transpose()?;
-
+pub fn cmd_search(name: Option<Name>) -> EyreResult<()> {
     let name_query = name
         .map(|v| format!("?q={}", v.url_path_segments()))
         .unwrap_or("".into());
@@ -362,87 +356,9 @@ fn transfer_progress(progress: Progress<'_>) -> bool {
     true
 }
 
-pub fn cmd_fetch(name: String, options: CmdFetchOptions) -> EyreResult<()> {
-    let dummy_folder = match options.git {
-        false => {
-            let name = Name::new(&name)?;
-
-            let url = format!("{REGISTRY_DOMAIN}/pkg/{}", name.url_path_segments());
-
-            let resp = ureq::get(&url).call()?;
-
-            if resp.status() != 200 {
-                error(&format!(
-                    "Failed to fetch repository: status code {}",
-                    resp.status()
-                ));
-                return Ok(());
-            }
-
-            let body = resp.into_body().into_reader();
-
-            let mut tar = tar::Archive::new(body);
-
-            // The repository needs to be unpacked
-            // to a dummy folder first, then moved
-            // to its final destination
-            let dummy_folder = tempfile::tempdir()?;
-            tar.unpack(&dummy_folder)?;
-
-            dummy_folder
-        }
-        true => {
-            let dummy_folder = tempfile::tempdir()?;
-
-            let mut fetch_callbacks = RemoteCallbacks::new();
-            fetch_callbacks.transfer_progress(transfer_progress);
-
-            let mut fetch_options = FetchOptions::new();
-            fetch_options.remote_callbacks(fetch_callbacks);
-
-            RepoBuilder::new()
-                .fetch_options(fetch_options)
-                .clone(&name, dummy_folder.path())?;
-
-            success("Successfully fetched repository");
-
-            dummy_folder
-        }
-    };
-
-    // Get the version of the package
-    let repo_config =
-        resource::repository::Config::from(resource::repository::TomlConfigLatest::from(
-            resource::repository::AnyTomlConfig::read_toml(&dummy_folder.path().join("batl.toml"))?,
-        ));
-    let version = repo_config.version;
-    let name = repo_config.name.with_version(version);
-
-    let repository_path = match options.local {
-        true => crate::system::repository_root(),
-        false => crate::system::fetched_repository_root(),
-    }
-    .ok_or(err_battalion_not_setup())?
-    .join(name.path_segments_as_repository_name());
-
-    std::fs::create_dir_all(&repository_path)?;
-
-    fs_extra::dir::move_dir(
-        dummy_folder,
-        &repository_path,
-        &CopyOptions::new().content_only(true),
-    )?;
-
-    // std::fs::rename(dummy_folder.keep(), &repository_path)?;
-
-    success(&format!("Fetched repository {name}"));
-
-    Ok(())
-}
-
-pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> EyreResult<()> {
+pub fn cmd_exec(name: Option<Name>, script: String, args: Vec<String>) -> EyreResult<()> {
     let repository = match &name {
-        Some(val) => Repository::load(Name::new(val)?)?,
+        Some(val) => Repository::load(val.clone())?,
         None => Repository::locate_then_load(&current_dir()?)?,
     };
 
@@ -482,16 +398,16 @@ pub fn cmd_exec(name: Option<String>, script: String, args: Vec<String>) -> Eyre
         Ok(())
     } else {
         Err(match &name {
-            Some(v) => err_resource_does_not_exist(v),
+            Some(v) => err_resource_does_not_exist(&v.to_string()),
             None => err_not_executed_inside_repository(),
         })
     }
 }
 
-pub fn cmd_which(name: Option<String>, version: bool) -> EyreResult<()> {
+pub fn cmd_which(name: Option<Name>, version: bool) -> EyreResult<()> {
     if let Some(name) = name {
-        let repository =
-            Repository::load(Name::new(&name)?)?.ok_or(err_resource_does_not_exist(&name))?;
+        let repository = Repository::load(name.clone())?
+            .ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
         if version {
             println!(
@@ -567,9 +483,7 @@ pub fn cmd_setup() -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_add(name: String) -> EyreResult<()> {
-    let name = Name::new(&name)?;
-
+pub fn cmd_add(name: Name) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
@@ -583,9 +497,7 @@ pub fn cmd_add(name: String) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_remove(name: String) -> EyreResult<()> {
-    let name = Name::new(&name)?;
-
+pub fn cmd_remove(name: Name) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
@@ -693,14 +605,14 @@ pub fn cmd_auth() -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_link(name: String, path: PathBuf) -> EyreResult<()> {
+pub fn cmd_link(subpath_name: SubpathableName, path: PathBuf) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    let subpath_name = SubpathableName::from_str(&name)?;
+    let name = subpath_name.name();
 
-    let other =
-        Repository::load(subpath_name.name().clone())?.ok_or(err_resource_does_not_exist(&name))?;
+    let other = Repository::load(subpath_name.name().clone())?
+        .ok_or(err_resource_does_not_exist(&name.to_string()))?;
 
     repository.add_link(&other, path, subpath_name.subpath().cloned())?;
 
@@ -709,11 +621,13 @@ pub fn cmd_link(name: String, path: PathBuf) -> EyreResult<()> {
     Ok(())
 }
 
-pub fn cmd_unlink(name: String) -> EyreResult<()> {
+pub fn cmd_unlink(subpath_name: SubpathableName) -> EyreResult<()> {
     let mut repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
-    repository.remove_link(&SubpathableName::from_str(&name)?)?;
+    repository.remove_link(&subpath_name)?;
+
+    let name = subpath_name.name();
 
     success(&format!("Removed link for {name}"));
     Ok(())
@@ -740,6 +654,59 @@ pub fn cmd_lock() -> EyreResult<()> {
     repository.lock()?;
 
     success("Repository locked");
+
+    Ok(())
+}
+
+pub fn cmd_pull(name: Name, config: Vec<String>) -> EyreResult<()> {
+    let repository =
+        Repository::load(name.clone())?.ok_or(err_resource_does_not_exist(&name.to_string()))?;
+
+    let mut attrs = HashMap::new();
+
+    for config_val in config {
+        if let Some((name, val)) = config_val.split_once('=') {
+            attrs.insert(name.to_string(), val.to_string());
+        } else {
+            return Err(err_input_requested_is_invalid(
+                &config_val,
+                "config values must have '='",
+            ));
+        }
+    }
+
+    let source = RepositorySource {
+        handler: name,
+        attrs,
+    };
+
+    let (data, action_env) = source.pull()?;
+
+    let tempdir_path = action_env.cwd.path();
+
+    let repo_name = data.name.unwrap();
+    let repo_version = data.version.unwrap();
+
+    let mut new_repo =
+        Repository::create(repo_name.clone().with_version(repo_version.clone()), true)?;
+
+    for entry in std::fs::read_dir(tempdir_path)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let file_name = source_path.file_name().ok_or_else(err_theoretical)?;
+        let destination_path = new_repo.path().join(file_name);
+
+        std::fs::rename(&source_path, &destination_path)?;
+    }
+    std::fs::remove_dir_all(tempdir_path)?;
+
+    new_repo.reload()?;
+
+    // [TODO] The name could be changed, account for this now but in the future this needs to be forbidden
+    new_repo.config_mut().name = repo_name.clone();
+    new_repo.config_mut().version = repo_version.clone();
+    new_repo.config_mut().sources.push(source);
+    new_repo.save()?;
 
     Ok(())
 }
