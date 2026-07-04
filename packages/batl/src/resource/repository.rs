@@ -621,59 +621,7 @@ impl Repository {
     }
 
     pub fn gen_hashid(&self) -> EyreResult<HashId> {
-        let mut walk_builder = ignore::WalkBuilder::new(self.path());
-
-        walk_builder.add_custom_ignore_filename("batl.ignore");
-
-        let walk = walk_builder.build();
-
-        let mut hasher = Sha256::new();
-        let mut files: Vec<(String, String)> = vec![];
-
-        for result in walk {
-            let entry = result?;
-
-            let abs_path = entry.path();
-
-            if abs_path.is_dir() {
-                continue;
-            }
-
-            let rel_path_opt = pathdiff::diff_paths(abs_path, self.path());
-
-            if let Some(rel_path) = rel_path_opt {
-                let filename = rel_path.to_string_lossy().to_string();
-                let mut file_hasher = Xxh3::new();
-                let mut buffer = [0; 1024];
-
-                let mut file = File::open(abs_path)?;
-                while let Ok(n) = file.read(&mut buffer) {
-                    if n == 0 {
-                        // EOF
-                        break;
-                    }
-
-                    file_hasher.update(&buffer[..n]);
-                }
-
-                let file_hash = format!("{:X}", file_hasher.digest128());
-
-                let pos = files.iter().position(|file| file.0 > filename);
-                if let Some(pos) = pos {
-                    files.insert(pos, (filename, file_hash));
-                } else {
-                    files.push((filename, file_hash));
-                }
-            }
-        }
-
-        for (filename, hash) in files.iter() {
-            hasher.update(format!("{filename} {hash}").as_bytes());
-        }
-
-        let hash = format!("{:X}", hasher.finalize());
-
-        Ok(hash)
+        crate::utils::genhash_of_directory_as_repository(&self.path)
     }
 }
 

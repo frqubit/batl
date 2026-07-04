@@ -10,9 +10,16 @@ use std::{
 use crate::resource::Name;
 
 #[derive(ToFromLuaValue)]
-pub struct DownloadActionBatlConstant {
+pub struct PullActionBatlConstant {
     pub handler: BatlConstantHandler,
     pub target: BatlConstantTarget,
+}
+
+#[derive(ToFromLuaValue)]
+pub struct CheckPullActionBatlConstant {
+    pub handler: BatlConstantHandler,
+    pub target: BatlCheckConstantTarget,
+    pub confirm: bool,
 }
 
 #[derive(ToFromLuaValue)]
@@ -27,12 +34,26 @@ pub struct BatlConstantTarget {
 }
 
 #[derive(ToFromLuaValue)]
+pub struct BatlCheckConstantTarget {
+    pub config: BatlCheckConstantTargetConfig,
+}
+
+#[derive(ToFromLuaValue)]
 pub struct BatlConstantTargetConfig {
     #[lua_serde]
     pub name: Option<Name>,
     #[lua_serde]
     pub version: Option<Version>,
     pub reload: mlua::Function,
+}
+
+#[derive(ToFromLuaValue)]
+pub struct BatlCheckConstantTargetConfig {
+    #[lua_serde]
+    pub name: Name,
+    #[lua_serde]
+    pub version: Version,
+    pub hashid: String,
 }
 
 #[derive(ToFromLuaValue)]

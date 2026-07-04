@@ -55,6 +55,10 @@ pub fn err_theoretical() -> Report {
     eyre!("This error is not checked for and should be nonsensical, but is theoretically possible. Please report.")
 }
 
+pub fn err_check_failed(reason: &str) -> Report {
+    eyre!("A check has failed: {reason}")
+}
+
 // #[derive(Debug, Error)]
 // #[non_exhaustive]
 // pub enum ReadConfigError {
