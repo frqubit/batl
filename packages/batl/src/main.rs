@@ -5,7 +5,10 @@ use color_eyre::{eyre::eyre, Result as EyreResult};
 use error::err_not_executed_inside_repository;
 use resource::Repository;
 
-use crate::resource::{Name, SubpathableName};
+use crate::{
+    output::force_quiet_behavior,
+    resource::{Name, SubpathableName},
+};
 
 mod action;
 mod commands;
@@ -21,6 +24,8 @@ mod version;
 #[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "The multi-repo development tool")]
 struct Cli {
+    #[arg(long = "quiet")]
+    quiet: bool,
     #[command(subcommand)]
     subcmd: SubCommand,
 }
@@ -98,6 +103,10 @@ struct SubCmdArgs<T: Subcommand> {
 fn main() -> EyreResult<()> {
     let cli = Cli::parse();
 
+    if cli.quiet {
+        force_quiet_behavior();
+    }
+
     let result = match cli.subcmd {
         SubCommand::Repository(args) => commands::repository::run(args.subcmd),
         #[cfg(debug_assertions)]
@@ -124,9 +133,11 @@ fn main() -> EyreResult<()> {
     };
 
     if let Err(err) = result {
-        output::error(err.to_string().as_str());
-        if cfg!(debug_assertions) {
-            return Err(err);
+        if !cli.quiet {
+            output::error(err.to_string().as_str());
+            if cfg!(debug_assertions) {
+                return Err(err);
+            }
         }
     }
 
