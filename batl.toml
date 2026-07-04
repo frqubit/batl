@@ -6,7 +6,7 @@ name = "battalion.batl"
 version = "0.1.0"
 
 [scripts]
-install = "cargo install --debug --path packages/batl"
+install = "cargo install --debug --path packages/batl
 
 [dependencies]
 "battalion.source.github" = "0.1.0"

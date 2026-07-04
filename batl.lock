@@ -7,7 +7,7 @@ version = "0.3.0"
 [[dependencies]]
 name = "battalion.source.github"
 version = "0.1.0"
-hashid = "C636816F97FFC7B5B31B0A2051FF15FA518E7268E5F7B4BE2CE6E043A9593A49"
+hashid = "93FDE1CCE3BA9A30B41250B539B20261C53BB92981D1E98A019DF3046AFDB415"
 
 [[dependencies.sources]]
 handler = "battalion.source.tar"
