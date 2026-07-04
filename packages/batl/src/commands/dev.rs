@@ -150,6 +150,8 @@ fn cmd_push(unsafe_: bool) -> EyreResult<()> {
     let repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
+    repository.lock()?;
+
     if let Some(first_source) = repository.config().sources.first() {
         // Try to push
         first_source.push(&repository)?;
