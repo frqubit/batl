@@ -16,32 +16,23 @@ use clap::Subcommand;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    HashId,
     Sources,
     CheckPull {
         #[arg(long = "self")]
         self_: bool,
     },
-    Push,
+    Push {
+        #[arg(long = "unsafe")]
+        unsafe_: bool,
+    },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
-        Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
         Commands::CheckPull { self_ } => cmd_check_pull(self_),
-        Commands::Push => cmd_push(),
+        Commands::Push { unsafe_ } => cmd_push(unsafe_),
     }
-}
-
-fn cmd_hashid() -> EyreResult<()> {
-    let repository = Repository::locate_then_load(&current_dir()?)?
-        .ok_or(err_not_executed_inside_repository())?;
-
-    let hash = repository.gen_hashid()?;
-    println!("Hash: {hash}");
-
-    Ok(())
 }
 
 fn cmd_sources() -> EyreResult<()> {
@@ -151,8 +142,10 @@ fn cmd_check_pull(self_: bool) -> EyreResult<()> {
     Ok(())
 }
 
-fn cmd_push() -> EyreResult<()> {
-    cmd_check_pull(false)?;
+fn cmd_push(unsafe_: bool) -> EyreResult<()> {
+    if !unsafe_ {
+        cmd_check_pull(false)?;
+    };
 
     let repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
@@ -169,5 +162,10 @@ fn cmd_push() -> EyreResult<()> {
         ));
     }
 
-    cmd_check_pull(true)
+    // Check if you can pull yourself
+    if !unsafe_ {
+        cmd_check_pull(true)
+    } else {
+        Ok(())
+    }
 }

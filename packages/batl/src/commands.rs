@@ -710,3 +710,16 @@ pub fn cmd_pull(name: Name, config: Vec<String>) -> EyreResult<()> {
 
     Ok(())
 }
+
+pub fn cmd_hashid(name: Option<Name>) -> EyreResult<()> {
+    let repository = match name {
+        Some(n) => Repository::load(n.clone())?.ok_or(err_resource_does_not_exist(&n.to_string())),
+        None => Repository::locate_then_load(&current_dir()?)?
+            .ok_or(err_not_executed_inside_repository()),
+    }?;
+
+    let hash = repository.gen_hashid()?;
+    println!("{hash}");
+
+    Ok(())
+}

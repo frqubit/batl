@@ -83,6 +83,8 @@ enum SubCommand {
     Lock,
     #[command(about = "Pulls a repository using a handler")]
     Pull { name: Name, config: Vec<String> },
+    #[command(about = "Generates a hashid of a repository")]
+    HashId { name: Option<Name> },
     #[command(external_subcommand)]
     ExecShorthand(Vec<String>),
 }
@@ -117,6 +119,7 @@ fn main() -> EyreResult<()> {
         SubCommand::Deps => commands::cmd_deps(),
         SubCommand::Lock => commands::cmd_lock(),
         SubCommand::Pull { name, config } => commands::cmd_pull(name, config),
+        SubCommand::HashId { name } => commands::cmd_hashid(name),
         SubCommand::ExecShorthand(args) => cmd_execshorthand(args),
     };
 
