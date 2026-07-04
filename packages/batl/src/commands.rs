@@ -126,7 +126,7 @@ fn print_files_of_repository(name: Name) -> EyreResult<()> {
         let rel_path_opt = pathdiff::diff_paths(abs_path, repository.path());
 
         if let Some(rel_path) = rel_path_opt {
-            println!("{:?}", rel_path);
+            println!("{}", rel_path.to_string_lossy());
         }
     }
 

@@ -3,7 +3,7 @@ use std::{collections::HashMap, env::current_dir};
 use crate::{
     error::{
         err_check_failed, err_input_requested_is_invalid, err_not_executed_inside_repository,
-        err_resource_does_not_exist, err_theoretical,
+        err_resource_does_not_exist, err_resource_does_not_have_thing, err_theoretical,
     },
     resource::{
         source::{CheckPullResult, RepositorySource},
@@ -22,6 +22,7 @@ pub enum Commands {
         #[arg(long = "self")]
         self_: bool,
     },
+    Push,
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
@@ -29,6 +30,7 @@ pub fn run(cmd: Commands) -> EyreResult<()> {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
         Commands::CheckPull { self_ } => cmd_check_pull(self_),
+        Commands::Push => cmd_push(),
     }
 }
 
@@ -147,4 +149,25 @@ fn cmd_check_pull(self_: bool) -> EyreResult<()> {
     crate::output::success("Repository is confirmed pullable");
 
     Ok(())
+}
+
+fn cmd_push() -> EyreResult<()> {
+    cmd_check_pull(false)?;
+
+    let repository = Repository::locate_then_load(&current_dir()?)?
+        .ok_or(err_not_executed_inside_repository())?;
+
+    if let Some(first_source) = repository.config().sources.first() {
+        // Try to push
+        first_source.push(&repository)?;
+
+        crate::output::success("Pushed successfully");
+    } else {
+        return Err(err_resource_does_not_have_thing(
+            &repository.name().to_string(),
+            "source",
+        ));
+    }
+
+    cmd_check_pull(true)
 }

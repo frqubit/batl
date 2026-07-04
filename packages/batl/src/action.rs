@@ -53,7 +53,9 @@ impl BatlAction for PullAction {
                 data: self.source.attrs.clone(),
             },
             target: batlconstant::BatlConstantTarget {
+                path: None,
                 execute: batlconstant::target_execute(lua, &env.cwd.path())?,
+                write: batlconstant::target_write(lua, &env.cwd.path())?,
                 config: batlconstant::BatlConstantTargetConfig {
                     name: None,
                     version: None,
@@ -106,8 +108,9 @@ impl BatlAction for CheckPullAction {
                 data: self.source.attrs.clone(),
             },
             target: batlconstant::BatlCheckConstantTarget {
+                path: None,
                 config: batlconstant::BatlCheckConstantTargetConfig {
-                    name: self.name.clone(),
+                    name: self.name.clone().without_version(),
                     version: self.version.clone(),
                     hashid: self.hashid.clone(),
                 },
@@ -121,6 +124,52 @@ impl BatlAction for CheckPullAction {
         batl_constant: Self::BatlActionBatlConstant,
     ) -> EyreResult<Self::BatlActionOutput> {
         Ok(batl_constant.confirm)
+    }
+}
+
+pub struct PushAction<'life> {
+    pub source: RepositorySource,
+    pub repository: &'life Repository,
+}
+
+impl<'life> BatlAction for PushAction<'life> {
+    type BatlActionBatlConstant = batlconstant::PushActionBatlConstant;
+    type BatlActionOutput = ();
+
+    fn function_name(&self) -> &'static str {
+        "push"
+    }
+
+    fn batl_action_batl_constant(
+        &self,
+        lua: &Lua,
+        env: &ActionEnv,
+    ) -> EyreResult<Self::BatlActionBatlConstant> {
+        Ok(batlconstant::PushActionBatlConstant {
+            handler: batlconstant::BatlConstantHandler {
+                data: self.source.attrs.clone(),
+            },
+            target: batlconstant::BatlConstantTarget {
+                path: Some(self.repository.path().to_path_buf()),
+                execute: batlconstant::target_execute(lua, &env.cwd.path())?,
+                write: batlconstant::target_write(lua, &env.cwd.path())?,
+                config: batlconstant::BatlConstantTargetConfig {
+                    name: Some(self.repository.config().name.clone().without_version()),
+                    version: Some(self.repository.config().version.clone()),
+                    reload: batlconstant::target_config_reload(lua, &env.cwd.path())?,
+                },
+            },
+            manual: batlconstant::BatlConstantManual {
+                confirm: batlconstant::manual_confirm(lua)?,
+            },
+        })
+    }
+
+    fn as_output(
+        &self,
+        _batl_constant: Self::BatlActionBatlConstant,
+    ) -> EyreResult<Self::BatlActionOutput> {
+        Ok(())
     }
 }
 

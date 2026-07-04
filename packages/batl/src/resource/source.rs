@@ -1,7 +1,7 @@
 use tempfile::TempDir;
 
 use crate::action::batlconstant::BatlConstantTargetConfig;
-use crate::action::{ActionEnv, CheckPullAction, PullAction};
+use crate::action::{ActionEnv, CheckPullAction, PullAction, PushAction};
 use crate::error::{err_resource_does_not_exist, err_theoretical};
 use crate::resource::summary::SummarizedDependency;
 use crate::resource::{tomlconfig, Name, Repository};
@@ -30,6 +30,20 @@ impl RepositorySource {
         };
 
         crate::action::run_action(&repository, action)
+    }
+
+    pub fn push(&self, repository: &Repository) -> EyreResult<()> {
+        let handler_repo = Repository::load(self.handler.clone())?
+            .ok_or(err_resource_does_not_exist(&self.handler.to_string()))?;
+
+        let action = PushAction {
+            source: self.clone(),
+            repository,
+        };
+
+        crate::action::run_action(&handler_repo, action)?;
+
+        Ok(())
     }
 
     pub fn check_pull(&self, dependency: &SummarizedDependency) -> EyreResult<CheckPullResult> {
