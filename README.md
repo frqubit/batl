@@ -1,6 +1,6 @@
 # Battalion
 
-Battalion is a CLI tool for managing codebase relationships. It uses a simple heirarchy of **repositories** and **workspaces** to link codebases together when needed, and keep them separate when not.
+Battalion is a CLI tool for managing codebase relationships. It uses a simple heirarchy of repositories to link codebases together when needed, and keep them separate when not.
 
 ## Installation
 

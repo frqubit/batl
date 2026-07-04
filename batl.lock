@@ -1,0 +1,23 @@
+name = "battalion.batl"
+version = "0.1.0"
+
+[environment]
+version = "0.3.0"
+
+[[dependencies]]
+name = "battalion.source.github"
+version = "0.1.0"
+hashid = "C636816F97FFC7B5B31B0A2051FF15FA518E7268E5F7B4BE2CE6E043A9593A49"
+
+[[dependencies.sources]]
+handler = "battalion.source.tar"
+url = "https://batl-public-295921714505-us-east-1-an.s3.us-east-1.amazonaws.com/battalion_source_github.tar"
+
+[[dependencies]]
+name = "battalion.source.tar"
+version = "0.1.0"
+hashid = "252851F1553F87C1D2307ADC91CB363ADC8531C20D1878F2B760C187A238160B"
+
+[[dependencies.sources]]
+handler = "battalion.source.tar"
+url = "https://batl-public-295921714505-us-east-1-an.s3.us-east-1.amazonaws.com/battalion_source_tar.tar"
