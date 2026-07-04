@@ -7,6 +7,7 @@ use crate::{
     },
     resource::{
         source::{CheckPullResult, RepositorySource},
+        summary::SummarizedDependency,
         Name, Repository,
     },
     EyreResult,
@@ -17,14 +18,17 @@ use clap::Subcommand;
 pub enum Commands {
     HashId,
     Sources,
-    CheckPull,
+    CheckPull {
+        #[arg(long = "self")]
+        self_: bool,
+    },
 }
 
 pub fn run(cmd: Commands) -> EyreResult<()> {
     match cmd {
         Commands::HashId => cmd_hashid(),
         Commands::Sources => cmd_sources(),
-        Commands::CheckPull => cmd_check_pull(),
+        Commands::CheckPull { self_ } => cmd_check_pull(self_),
     }
 }
 
@@ -49,7 +53,7 @@ fn cmd_sources() -> EyreResult<()> {
     Ok(())
 }
 
-fn cmd_check_pull() -> EyreResult<()> {
+fn cmd_check_pull(self_: bool) -> EyreResult<()> {
     let repository = Repository::locate_then_load(&current_dir()?)?
         .ok_or(err_not_executed_inside_repository())?;
 
@@ -88,6 +92,54 @@ fn cmd_check_pull() -> EyreResult<()> {
             return Err(err_check_failed(&format!(
                 "{} does not have a satisfactory source",
                 &dep.name
+            )));
+        }
+    }
+
+    if self_ {
+        let sources = repository
+            .config()
+            .sources
+            .clone()
+            .into_iter()
+            .map(RepositorySource::from);
+        let mut found_good_source = false;
+
+        let summary_of_self = SummarizedDependency {
+            name: repository.name().clone(),
+            version: repository.config().version.clone(),
+            hashid: repository.gen_hashid()?,
+            sources: sources.clone().map(From::from).collect(),
+        };
+
+        for source in sources {
+            let check_res = source.check_pull(&summary_of_self)?;
+
+            if let CheckPullResult::CanPullAndDid(res) = check_res {
+                let name = res.0.name.unwrap();
+                let path = res.1.cwd.path();
+                let hashid = crate::utils::genhash_of_directory_as_repository(path)?;
+
+                crate::output::info(&format!("HASHID {}: {}", name, hashid));
+
+                if
+                /* dep.name.clone().without_version() == name.without_version() && */
+                hashid == summary_of_self.hashid {
+                    found_good_source = true;
+                    break;
+                }
+            } else {
+                if let CheckPullResult::CanPullButDidNot = check_res {
+                    found_good_source = true;
+                    break;
+                }
+            }
+        }
+
+        if !found_good_source {
+            return Err(err_check_failed(&format!(
+                "{} does not have a satisfactory source",
+                &repository.name()
             )));
         }
     }

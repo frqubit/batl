@@ -20,5 +20,5 @@ install = "cargo install --debug --path packages/batl"
 include = "require"
 
 [[sources]]
-handler = "battalion.source.git"
-url = "https://github.com/frqubit/batl"
+handler = "battalion.source.github"
+repository = "frqubit/batl"
