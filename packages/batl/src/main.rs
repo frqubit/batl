@@ -62,7 +62,7 @@ enum SubCommand {
         script: String,
         args: Vec<String>,
     },
-    #[command(about = "Sets up battalion")]
+    #[command(about = "Sets up battalion tool or repository")]
     Setup,
     #[command(about = "Adds a dependency")]
     Add { name: Name },

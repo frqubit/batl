@@ -440,7 +440,39 @@ pub fn cmd_which(name: Option<Name>, version: bool) -> EyreResult<()> {
     Ok(())
 }
 
+pub fn cmd_setup_repository(repo: Repository) -> EyreResult<()> {
+    let links = &repo.config().links;
+
+    for (subname, relpath) in links {
+        let abspath = repo.path().join(relpath);
+        println!("{abspath:?}");
+
+        let symlink_metadata = std::fs::symlink_metadata(&abspath);
+
+        if let Ok(_) = symlink_metadata {
+            std::fs::remove_file(&abspath)?;
+            println!("removed symlink")
+        }
+
+        let other_repo = Repository::load(subname.name().clone())?
+            .ok_or(err_resource_does_not_exist(&subname.to_string()))?;
+
+        let mut other_path = other_repo.path().to_path_buf();
+        if let Some(subpath) = subname.subpath() {
+            other_path.push(subpath);
+        }
+
+        crate::resource::symlink_dir(&other_path, &abspath)?;
+    }
+
+    Ok(())
+}
+
 pub fn cmd_setup() -> EyreResult<()> {
+    if let Ok(Some(repo)) = Repository::locate_then_load(&current_dir()?) {
+        return cmd_setup_repository(repo);
+    };
+
     #[cfg(target_os = "windows")]
     crate::utils::windows_symlink_perms()?;
 
